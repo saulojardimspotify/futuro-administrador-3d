@@ -387,7 +387,7 @@ class Itens {
   gerarFileira(z, jogo) {
     const fase = FASES[this.fase];
     const faixas = [-1, 0, 1].sort(() => Math.random() - 0.5);
-    const qtd = Math.random() < 0.35 ? 2 : 1;
+    const qtd = Math.random() < fase.chanceDois ? 2 : 1;
     const tipos = Object.keys(fase.obstaculos);
     for (let i = 0; i < qtd; i++) {
       const tipo = tipos[Math.floor(Math.random() * tipos.length)];
@@ -395,13 +395,13 @@ class Itens {
     }
     const livres = faixas.slice(qtd);
     const pendentes = this.pendentes();
-    if (pendentes.length && Math.random() < 0.5) {
+    if (pendentes.length && Math.random() < fase.chanceItem) {
       // fase 1: livro da disciplina; fase 2: meta batida (o tipo continua "livro" nas regras)
       const item = pendentes[Math.floor(Math.random() * pendentes.length)];
       this.adicionar(fase.criarColetavel(item), livres.shift(), z, { tipo: 'livro', nome: item.nome });
     }
     const temCafe = this.lista.some((i) => i.userData.tipo === 'cafe');
-    if (jogo.vidas === 1 && livres.length && !temCafe && Math.random() < 0.3) {
+    if (jogo.vidas === 1 && livres.length && !temCafe && Math.random() < fase.chanceCafe) {
       this.adicionar(criarCafe(), livres[0], z, { tipo: 'cafe' });
     }
   }
@@ -410,7 +410,8 @@ class Itens {
   atualizar(jogo, t) {
     while (!this.modoFinal && this.proximoZ > jogo.z - 120) {
       this.gerarFileira(this.proximoZ, jogo);
-      this.proximoZ -= Math.max(11, jogo.vel * 0.9);
+      const [minimo, fator] = FASES[this.fase].espaco;
+      this.proximoZ -= Math.max(minimo, jogo.vel * fator);
     }
 
     const eventos = [];
@@ -424,7 +425,7 @@ class Itens {
       } else if (d.dancarinos) {
         this.animarFesta(d, t);
       } else if (d.animar) {
-        d.animar(t);
+        d.animar(t, jogo);
       } else if (d.tipo === 'cafe') {
         // o café só existe enquanto o jogador tem 1 vida
         if (jogo.vidas > 1) {

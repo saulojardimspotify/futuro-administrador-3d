@@ -223,7 +223,7 @@ function atualizarJogo(dt) {
     } else if (jogo.invencivel <= 0) {
       Sons.batida();
       jogo.vidas--;
-      jogo.invencivel = 1.6;
+      jogo.invencivel = FASES[fase].invencivel;
       tremor = 0.4;
       HUD.vidas(jogo.vidas);
       HUD.aviso(`${ev.nome}! −1 vida`, 'ruim');

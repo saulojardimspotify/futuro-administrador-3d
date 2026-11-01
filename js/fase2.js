@@ -110,10 +110,19 @@ function criarChefe() {
   grrr.position.set(0.03, 2.6, 0.32);
   g.add(grrr);
 
-  // dedo apontando e balançando para o jogador
-  g.userData.animar = (tempo) => {
+  // Dedo apontando e balançando. Quando o jogador chega perto, o chefe vem andando
+  // na direção dele (só no final, para nunca invadir a faixa livre de outra fileira).
+  let ultimo = null;
+  g.userData.animar = (tempo, jogo) => {
+    const dt = ultimo === null ? 0 : tempo - ultimo;
+    ultimo = tempo;
     chefe.userData.bracoD.rotation.x = 1.4 + Math.sin(tempo * 10) * 0.3;
     chefe.userData.bracoE.rotation.z = -0.5;
+    if (jogo && jogo.z - g.position.z < 22) {
+      g.position.z += dt * 3.5;
+      chefe.userData.pernaE.rotation.x = Math.sin(tempo * 9) * 0.6;
+      chefe.userData.pernaD.rotation.x = -Math.sin(tempo * 9) * 0.6;
+    }
   };
   return g;
 }
@@ -230,19 +239,24 @@ function criarMeta(m) {
   return g;
 }
 
-// Tudo o que muda de uma fase para a outra fica aqui.
-// vel = [velocidade inicial, ganho por segundo, ganho por item pego, velocidade máxima]
+// Tudo o que muda de uma fase para a outra fica aqui. São as "alavancas" de dificuldade:
+//   vel        = [velocidade inicial, ganho por segundo, ganho por item pego, velocidade máxima]
+//   chanceDois = chance de uma fileira ter 2 obstáculos (em vez de 1)
+//   espaco     = [distância mínima entre fileiras, fator da velocidade] (menor = fileiras mais grudadas)
+//   chanceItem = chance de aparecer um livro/meta na fileira
+//   chanceCafe = chance de aparecer café (quando resta 1 vida)
+//   invencivel = segundos piscando sem levar dano depois de bater
 const FASES = {
   1: {
     meta: META_DISCIPLINAS, colecao: DISCIPLINAS, obstaculos: OBSTACULOS,
     criarObstaculo, criarColetavel: criarLivro, tema: 'faculdade', corFundo: 0xe6e1f0,
     unidade: 'disciplinas', titulo: '🎓 Progresso acadêmico', curso: 'CURSO DE ADMINISTRAÇÃO',
-    vel: [9, 0.06, 0.5, 28],
+    vel: [9, 0.06, 0.5, 28], chanceDois: 0.35, espaco: [11, 0.9], chanceItem: 0.5, chanceCafe: 0.3, invencivel: 1.6,
   },
   2: {
     meta: META_FASE2, colecao: METAS, obstaculos: OBSTACULOS_FASE2,
     criarObstaculo: criarObstaculoFase2, criarColetavel: criarMeta, tema: 'empresa', corFundo: 0xe8eef5,
     unidade: 'metas', titulo: '🏆 Rumo à promoção', curso: 'ESTÁGIO EM ADMINISTRAÇÃO',
-    vel: [14, 0.08, 0.6, 32],
+    vel: [17, 0.12, 0.75, 38], chanceDois: 0.65, espaco: [8, 0.7], chanceItem: 0.38, chanceCafe: 0.15, invencivel: 1.0,
   },
 };
