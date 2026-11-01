@@ -158,6 +158,42 @@ function cilindro(raioTopo, raioBase, altura, cor, lados = 12) {
   );
 }
 
+// Xícara de café com pires e vapor: dá +1 vida.
+function criarCafe() {
+  const g = new THREE.Group();
+  const xicara = new THREE.Group();
+  const corpo = cilindro(0.28, 0.22, 0.42, 0xffffff, 18);
+  const faixa = cilindro(0.285, 0.27, 0.08, 0xdc2626, 18);
+  faixa.position.y = 0.08;
+  const cafe = cilindro(0.25, 0.25, 0.02, 0x4a2c17, 18);
+  cafe.position.y = 0.2;
+  const alca = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.035, 8, 16), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+  alca.position.set(0.3, 0, 0);
+  const pires = cilindro(0.42, 0.34, 0.05, 0xffffff, 20);
+  pires.position.y = -0.23;
+  xicara.add(corpo, faixa, cafe, alca, pires);
+  xicara.scale.setScalar(2.1);
+  // brilho dourado atrás, para chamar atenção
+  const brilho = new THREE.Mesh(
+    new THREE.RingGeometry(0.75, 0.92, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffd34d, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+  );
+  g.add(xicara, brilho);
+  g.userData.brilho = brilho;
+
+  // vapor: 3 bolinhas que sobem e somem
+  g.userData.vapor = [-0.1, 0.05, 0.12].map((x) => {
+    const v = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 })
+    );
+    v.position.x = x;
+    g.add(v);
+    return v;
+  });
+  return g;
+}
+
 // Anjo da Morte segurando a foice e a placa "REPROVAÇÃO". A frente dele aponta para +Z (para o jogador).
 function criarAnjoDaMorte() {
   const g = new THREE.Group();
@@ -346,7 +382,8 @@ class Itens {
   }
 
   // Cria uma "fileira": 1 ou 2 obstáculos e, às vezes, um livro numa faixa livre.
-  gerarFileira(z) {
+  // Se o jogador tem só 1 vida, às vezes aparece também uma xícara de café.
+  gerarFileira(z, jogo) {
     const faixas = [-1, 0, 1].sort(() => Math.random() - 0.5);
     const qtd = Math.random() < 0.35 ? 2 : 1;
     const tipos = Object.keys(OBSTACULOS);
@@ -354,18 +391,23 @@ class Itens {
       const tipo = tipos[Math.floor(Math.random() * tipos.length)];
       this.adicionar(criarObstaculo(tipo), faixas[i], z, Object.assign({ tipo: 'obstaculo' }, OBSTACULOS[tipo]));
     }
+    const livres = faixas.slice(qtd);
     const pendentes = this.pendentes();
     if (pendentes.length && Math.random() < 0.5) {
       const disciplina = pendentes[Math.floor(Math.random() * pendentes.length)];
       const livro = criarLivro(disciplina);
-      this.adicionar(livro, faixas[qtd], z, { tipo: 'livro', nome: disciplina.nome });
+      this.adicionar(livro, livres.shift(), z, { tipo: 'livro', nome: disciplina.nome });
+    }
+    const temCafe = this.lista.some((i) => i.userData.tipo === 'cafe');
+    if (jogo.vidas === 1 && livres.length && !temCafe && Math.random() < 0.3) {
+      this.adicionar(criarCafe(), livres[0], z, { tipo: 'cafe' });
     }
   }
 
   // Chamado a cada quadro. Devolve a lista do que o jogador pegou/bateu.
   atualizar(jogo, t) {
     while (!this.modoFinal && this.proximoZ > jogo.z - 120) {
-      this.gerarFileira(this.proximoZ);
+      this.gerarFileira(this.proximoZ, jogo);
       this.proximoZ -= Math.max(11, jogo.vel * 0.9);
     }
 
@@ -379,11 +421,30 @@ class Itens {
         item.position.y = 0.12 + Math.sin(t * 2 + item.position.z) * 0.1;
       } else if (d.dancarinos) {
         this.animarFesta(d, t);
+      } else if (d.tipo === 'cafe') {
+        // o café só existe enquanto o jogador tem 1 vida
+        if (jogo.vidas > 1) {
+          this.remover(item);
+          continue;
+        }
+        item.rotation.y = Math.sin(t * 1.5) * 0.6; // balança, sem dar as costas para o jogador
+        item.position.y = 1.0 + Math.sin(t * 3 + item.position.z) * 0.12;
+        d.brilho.scale.setScalar(1 + Math.sin(t * 5) * 0.08);
+        d.vapor.forEach((v, i) => {
+          const k = (t * 0.8 + i / 3) % 1; // sobe, some e recomeça
+          v.position.y = 0.6 + k * 0.9;
+          v.material.opacity = 0.7 * (1 - k);
+        });
       }
 
       const dz = Math.abs(item.position.z - jogo.z);
       const dx = Math.abs(item.position.x - jogo.x);
       if (!d.usado && dz < 0.6) {
+        if (d.tipo === 'cafe' && dx < 0.9) {
+          eventos.push({ tipo: 'cafe' });
+          this.remover(item);
+          continue;
+        }
         if (d.tipo === 'livro' && dx < 0.9) {
           this.coletadas.push(d.nome);
           eventos.push({ tipo: 'livro', nome: d.nome });
@@ -427,7 +488,7 @@ class Itens {
     const zPorta = zJogador - 90;
     // tira os livros que sobraram e os obstáculos perto da porta
     for (const item of [...this.lista]) {
-      if (item.userData.tipo === 'livro' || item.position.z < zPorta + 25) this.remover(item);
+      if (['livro', 'cafe'].includes(item.userData.tipo) || item.position.z < zPorta + 25) this.remover(item);
     }
 
     const g = new THREE.Group();

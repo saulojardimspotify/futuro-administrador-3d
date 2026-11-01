@@ -192,6 +192,11 @@ function atualizarJogo(dt) {
       HUD.disciplinas(itens.coletadas);
       HUD.aviso(`+ ${ev.nome}`, 'bom');
       Sons.livro();
+    } else if (ev.tipo === 'cafe') {
+      jogo.vidas = Math.min(3, jogo.vidas + 1);
+      HUD.vidas(jogo.vidas);
+      HUD.aviso('☕ Café! +1 vida', 'bom');
+      Sons.cafe();
     } else if (jogo.invencivel <= 0) {
       Sons.batida();
       jogo.vidas--;

@@ -125,6 +125,12 @@ const Sons = {
     [659, 784, 1047].forEach((f, i) => this.nota(f, i * 0.07, 0.16, 'square', 0.12));
   },
 
+  // café: "gole" rápido + notas subindo
+  cafe() {
+    this.nota(220, 0, 0.12, 'sine', 0.25, 440);
+    [523, 659, 784, 1047].forEach((f, i) => this.nota(f, 0.1 + i * 0.07, 0.18, 'triangle', 0.18));
+  },
+
   batida() {
     this.nota(180, 0, 0.35, 'sawtooth', 0.25, 50);
     this.ruido(0, 0.25, 0.4, 600);
