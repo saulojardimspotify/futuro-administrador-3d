@@ -174,8 +174,11 @@ input.erro { border-color: #ef4444; animation: tremer 0.3s; }
   font-size: 22px; cursor: pointer; z-index: 10;
 }
 .btn-som:hover { filter: brightness(1.2); }
-/* durante a corrida o canto esquerdo é do HUD, então o botão vai para o meio */
-#hud:not(.escondido) ~ .btn-som { left: 50%; transform: translateX(-50%); }
+.btn-som { z-index: 30; }
+.btn-tela { left: 72px; display: flex; align-items: center; justify-content: center; padding: 0; }
+/* durante a corrida o canto esquerdo é do HUD, então os botões vão para o meio */
+#hud:not(.escondido) ~ .btn-som { left: calc(50% - 28px); transform: translateX(-50%); }
+#hud:not(.escondido) ~ .btn-tela { left: calc(50% + 28px); }
 
 #fade {
   position: fixed; inset: 0; background: #fff8e1;

@@ -286,6 +286,28 @@ function alternarSom() {
   $('btn-som').blur();
 }
 
+// ---------- Tela cheia ----------
+// Usa o modo tela cheia do navegador: some a barra de endereço, as abas e a barra do Windows.
+const raiz = document.documentElement;
+const pedirTelaCheia = raiz.requestFullscreen || raiz.webkitRequestFullscreen;
+const emTelaCheia = () => document.fullscreenElement || document.webkitFullscreenElement;
+
+function alternarTelaCheia() {
+  if (emTelaCheia()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else {
+    const pedido = pedirTelaCheia.call(raiz);
+    if (pedido && pedido.catch) pedido.catch(() => {}); // alguns navegadores não devolvem promessa
+  }
+  $('btn-tela').blur();
+}
+
+function atualizarIconeTela() {
+  // ícone de "expandir" fora da tela cheia, de "recolher" dentro dela
+  $('icone-tela').setAttribute('d', emTelaCheia()
+    ? 'M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5'
+    : 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5');
+}
+
 function fecharCapa() {
   $('tela-capa').classList.add('escondido');
   Sons.iniciar(); // aproveita o toque para já liberar os áudios no celular
@@ -294,7 +316,16 @@ function fecharCapa() {
 function configurarControles() {
   $('btn-som').onclick = alternarSom;
   $('btn-jogar').onclick = fecharCapa;
+  // iPhone não permite tela cheia em páginas: lá o botão nem aparece
+  if (pedirTelaCheia) {
+    $('btn-tela').onclick = alternarTelaCheia;
+    document.addEventListener('fullscreenchange', atualizarIconeTela);
+    document.addEventListener('webkitfullscreenchange', atualizarIconeTela);
+  } else {
+    $('btn-tela').classList.add('escondido');
+  }
   addEventListener('keydown', (e) => {
+    if ((e.key === 'f' || e.key === 'F') && pedirTelaCheia && document.activeElement !== $('nome')) return alternarTelaCheia();
     if (!$('tela-capa').classList.contains('escondido')) {
       if (e.key === 'Enter') fecharCapa();
       return;
