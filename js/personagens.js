@@ -5,12 +5,12 @@ const PELE_NEGRA = 0x6b4226;
 const PELE_BRANCA = 0xf1c9a5;
 
 const PERSONAGENS = [
-  { descricao: 'Homem negro, cabelo preto curto', mulher: false, pele: PELE_NEGRA, cabelo: 0x111111, longo: false, raspado: true, camisa: 0x1e3a8a, calca: 0x1f2937 },
-  { descricao: 'Homem branco, cabelo preto', mulher: false, pele: PELE_BRANCA, cabelo: 0x111111, longo: false, camisa: 0x15803d, calca: 0x1f2937 },
-  { descricao: 'Homem branco, cabelo roxo curto', mulher: false, pele: PELE_BRANCA, cabelo: 0x8e44ad, longo: false, camisa: 0xea580c, calca: 0x334155 },
-  { descricao: 'Mulher negra, cabelo preto longo', mulher: true, pele: PELE_NEGRA, cabelo: 0x111111, longo: true, camisa: 0xdb2777, calca: 0x1f2937 },
-  { descricao: 'Mulher branca, cabelo loiro longo', mulher: true, pele: PELE_BRANCA, cabelo: 0xf4c430, longo: true, camisa: 0x7c3aed, calca: 0x334155 },
-  { descricao: 'Mulher branca, cabelo azul longo', mulher: true, pele: PELE_BRANCA, cabelo: 0x2f80ed, longo: true, camisa: 0x0891b2, calca: 0x1f2937 },
+  { nome: 'Mario', descricao: 'Homem negro, cabelo preto curto', mulher: false, pele: PELE_NEGRA, cabelo: 0x111111, longo: false, raspado: true, camisa: 0x1e3a8a, calca: 0x1f2937 },
+  { nome: 'Enzo', descricao: 'Homem branco, cabelo preto', mulher: false, pele: PELE_BRANCA, cabelo: 0x111111, longo: false, camisa: 0x15803d, calca: 0x1f2937 },
+  { nome: 'Joca', descricao: 'Homem branco, cabelo roxo curto', mulher: false, pele: PELE_BRANCA, cabelo: 0x8e44ad, longo: false, camisa: 0xea580c, calca: 0x334155 },
+  { nome: 'Valentina', descricao: 'Mulher negra, cabelo preto longo', mulher: true, pele: PELE_NEGRA, cabelo: 0x111111, longo: true, camisa: 0xdb2777, calca: 0x1f2937 },
+  { nome: 'Isabella', descricao: 'Mulher branca, cabelo loiro longo', mulher: true, pele: PELE_BRANCA, cabelo: 0xf4c430, longo: true, camisa: 0x7c3aed, calca: 0x334155 },
+  { nome: 'Maria Flor', descricao: 'Mulher branca, cabelo azul longo', mulher: true, pele: PELE_BRANCA, cabelo: 0x2f80ed, longo: true, camisa: 0x0891b2, calca: 0x1f2937 },
 ];
 
 // Monta um boneco. A frente dele aponta para -Z (a direção em que ele corre).

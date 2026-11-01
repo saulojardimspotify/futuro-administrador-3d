@@ -58,7 +58,7 @@ function montarSelecao() {
     def.retratoRosto = gerarRetrato(def, false);
     const card = document.createElement('button');
     card.className = 'card';
-    card.innerHTML = `<img src="${gerarRetrato(def, true)}" alt="${def.descricao}">`;
+    card.innerHTML = `<img src="${gerarRetrato(def, true)}" alt="${def.descricao}"><span>${def.nome}</span>`;
     card.onclick = () => escolher(i);
     $('cards').appendChild(card);
   });

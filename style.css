@@ -51,6 +51,7 @@ h2 { margin: 0 0 8px; font-size: 28px; font-weight: 900; }
   transition: transform 0.15s, border-color 0.15s;
 }
 .card img { width: 100%; aspect-ratio: 1; display: block; }
+.card span { font-size: 16px; font-weight: 900; }
 .card:hover { transform: translateY(-3px); }
 .card.ativo { border-color: #facc15; box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.4); }
 
