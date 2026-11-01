@@ -1,7 +1,57 @@
 // Cena final: o auditório da formatura.
 // É uma "cutscene": uma sequência de movimentos programados no tempo (linha do tempo).
 
-const REITOR = { pele: 0xe0b48f, cabelo: 0x9ca3af, longo: false, camisa: 0x111827, calca: 0x111827 };
+// Prof. Túlio: cabelo castanho escuro curto, óculos redondos pretos e suéter cinza-claro.
+const TULIO = { pele: 0xf1c9a5, cabelo: 0x3b2a1e, longo: false, camisa: 0xd6d3d1, calca: 0x1f2937 };
+
+function criarTulio() {
+  const tulio = criarPersonagem(TULIO, { mochila: false });
+  const cabeca = tulio.userData.cabeca;
+  // óculos: duas armações redondas + ponte
+  for (const x of [-0.12, 0.12]) {
+    const aro = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.016, 6, 16), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+    aro.position.set(x, 0.02, -0.28);
+    cabeca.add(aro);
+  }
+  const ponte = caixa(0.07, 0.02, 0.02, 0x111111);
+  ponte.position.set(0, 0.04, -0.28);
+  cabeca.add(ponte);
+  cabeca.add(criarCapelo());
+  // beca aberta na frente, mostrando o suéter
+  for (const x of [-0.24, 0.24]) {
+    const lado = caixa(0.2, 1.25, 0.42, 0x111827);
+    lado.position.set(x, 0.95, 0);
+    tulio.add(lado);
+  }
+  const costas = caixa(0.72, 1.25, 0.1, 0x111827);
+  costas.position.set(0, 0.95, 0.17);
+  tulio.add(costas);
+  return tulio;
+}
+
+// Placa do púlpito com a foto do professor
+function texturaPlacaTulio() {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 320;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#1e3a8a';
+  ctx.fillRect(0, 0, 256, 320);
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(5, 5, 246, 310);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(128, 120, 90, 0, Math.PI * 2);
+  ctx.clip();
+  if (fotosProfessores['Túlio']) ctx.drawImage(fotosProfessores['Túlio'], 38, 30, 180, 180);
+  ctx.restore();
+  ctx.fillStyle = '#facc15';
+  ctx.font = '900 40px Nunito, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Prof. Túlio', 128, 275);
+  return new THREE.CanvasTexture(c);
+}
 
 class Auditorio {
   constructor(def, aoTerminar) {
@@ -25,8 +75,7 @@ class Auditorio {
     this.montarPlateia();
 
     // Reitor no palco, virado para a esquerda (-X)
-    this.reitor = criarPersonagem(REITOR, { mochila: false });
-    this.reitor.userData.cabeca.add(criarCapelo());
+    this.reitor = criarTulio();
     this.reitor.position.set(1.3, 1, -11.5);
     this.reitor.rotation.y = Math.PI / 2;
     cena.add(this.reitor);
@@ -102,7 +151,9 @@ class Auditorio {
 
     const pulpito = caixa(1.1, 1.3, 0.7, 0x3f2a14);
     pulpito.position.set(-3.5, 1.65, -12);
-    c.add(pulpito);
+    const placa = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.0), new THREE.MeshBasicMaterial({ map: texturaPlacaTulio() }));
+    placa.position.set(-3.5, 1.65, -11.64);
+    c.add(pulpito, placa);
   }
 
   montarPlateia() {

@@ -240,6 +240,9 @@ function fimDeJogo() {
   setTimeout(() => {
     $('fim-texto').innerHTML =
       `Você concluiu <b>${itens.coletadas.length} de ${META_DISCIPLINAS}</b> disciplinas<br>e fez <b>${Math.floor(jogo.pontos)}</b> pontos.`;
+    $('fim-ranking').innerHTML = Ranking.html(
+      Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: false })
+    );
     $('tela-fim').classList.remove('escondido');
     HUD.esconder();
     tela = 'fim';
@@ -256,7 +259,10 @@ function irParaAuditorio() {
     auditorio = new Auditorio(def, () => {
       const titulo = def.mulher ? 'Administradora formada' : 'Administrador formado';
       $('vitoria-texto').innerHTML =
-        `Parabéns, <b>${nomeJogador}</b>!<br>Agora você é ${titulo}.<br>Pontuação final: <b>${Math.floor(jogo.pontos)}</b>`;
+        `Parabéns, <b>${escaparHtml(nomeJogador)}</b>!<br>Agora você é ${titulo}.<br>Pontuação final: <b>${Math.floor(jogo.pontos)}</b>`;
+      $('vitoria-ranking').innerHTML = Ranking.html(
+        Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: true })
+      );
       $('tela-vitoria').classList.remove('escondido');
     });
     tela = 'auditorio';
