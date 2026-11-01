@@ -113,18 +113,26 @@ function criarChefe() {
   grrr.position.set(0.03, 2.6, 0.32);
   g.add(grrr);
 
-  // Dedo apontando e balançando. Quando o jogador chega perto, o chefe vem andando
-  // na direção dele (só no final, para nunca invadir a faixa livre de outra fileira).
+  // Dedo apontando e balançando. Quando o jogador está a 40 m, o chefe vem andando
+  // rápido na direção dele. Ele para antes da fileira da frente ("limite", definido
+  // em itens.js), para nunca bloquear a única faixa livre de outra fileira.
   let ultimo = null;
+  let zInicial = null;
   g.userData.animar = (tempo, jogo) => {
     const dt = ultimo === null ? 0 : tempo - ultimo;
     ultimo = tempo;
+    if (zInicial === null) zInicial = g.position.z;
     chefe.userData.bracoD.rotation.x = 1.4 + Math.sin(tempo * 10) * 0.3;
     chefe.userData.bracoE.rotation.z = -0.5;
-    if (jogo && jogo.z - g.position.z < 22) {
-      g.position.z += dt * 3.5;
-      chefe.userData.pernaE.rotation.x = Math.sin(tempo * 9) * 0.6;
-      chefe.userData.pernaD.rotation.x = -Math.sin(tempo * 9) * 0.6;
+    const andou = g.position.z - zInicial;
+    if (jogo && jogo.z - g.position.z < 40 && andou < (g.userData.limite ?? 8)) {
+      g.position.z += dt * 7;
+      chefe.userData.pernaE.rotation.x = Math.sin(tempo * 12) * 0.7;
+      chefe.userData.pernaD.rotation.x = -Math.sin(tempo * 12) * 0.7;
+      chefe.rotation.x = 0.15; // inclinado para a frente, andando decidido
+    } else {
+      chefe.userData.pernaE.rotation.x = chefe.userData.pernaD.rotation.x = 0;
+      chefe.rotation.x = 0;
     }
   };
   return g;

@@ -364,6 +364,7 @@ class Itens {
     if (this.porta) descartar(this.porta);
     this.porta = null;
     this.proximoZ = -35;
+    this.zUltimaFileira = undefined;
     this.coletadas = [];
     this.modoFinal = false;
   }
@@ -389,9 +390,12 @@ class Itens {
     const faixas = [-1, 0, 1].sort(() => Math.random() - 0.5);
     const qtd = Math.random() < fase.chanceDois ? 2 : 1;
     const tipos = Object.keys(fase.obstaculos);
+    // até onde um obstáculo que anda (o chefe) pode ir: para 2,5 m antes da fileira da frente
+    const limite = this.zUltimaFileira === undefined ? 8 : this.zUltimaFileira - z - 2.5;
+    this.zUltimaFileira = z;
     for (let i = 0; i < qtd; i++) {
       const tipo = tipos[Math.floor(Math.random() * tipos.length)];
-      this.adicionar(fase.criarObstaculo(tipo), faixas[i], z, Object.assign({ tipo: 'obstaculo' }, fase.obstaculos[tipo]));
+      this.adicionar(fase.criarObstaculo(tipo), faixas[i], z, Object.assign({ tipo: 'obstaculo', limite }, fase.obstaculos[tipo]));
     }
     const livres = faixas.slice(qtd);
     const pendentes = this.pendentes();
