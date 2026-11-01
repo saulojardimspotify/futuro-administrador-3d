@@ -1,56 +1,69 @@
 // Cena final: o auditório da formatura.
 // É uma "cutscene": uma sequência de movimentos programados no tempo (linha do tempo).
 
-// Prof. Túlio: cabelo castanho escuro curto, óculos redondos pretos e suéter cinza-claro.
-const TULIO = { pele: 0xf1c9a5, cabelo: 0x3b2a1e, longo: false, camisa: 0xd6d3d1, calca: 0x1f2937 };
+// Prof. Túlio: cabelo castanho escuro curto, óculos redondos, barba por fazer e beca fechada.
+const TULIO = { pele: 0xf1c9a5, cabelo: 0x3b2a1e, longo: false, camisa: 0x111827, calca: 0x111827 };
+
+// Rosto "pintado" no estilo pixel: sobrancelhas, olhos, óculos, barba por fazer e sorriso.
+function texturaRostoTulio() {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 104;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#f1c9a5';
+  ctx.fillRect(0, 0, 128, 104);
+  ctx.fillStyle = '#3b2a1e';
+  ctx.fillRect(0, 0, 10, 30); // costeletas
+  ctx.fillRect(118, 0, 10, 30);
+  ctx.fillRect(24, 14, 30, 6); // sobrancelhas
+  ctx.fillRect(74, 14, 30, 6);
+  // barba por fazer: pontinhos na parte de baixo do rosto
+  ctx.fillStyle = 'rgba(90, 62, 45, 0.55)';
+  for (let y = 58; y < 104; y += 6) {
+    for (let x = 10 + (y % 12); x < 118; x += 9) ctx.fillRect(x, y, 3, 3);
+  }
+  for (const x of [40, 88]) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x - 8, 30, 16, 12);
+    ctx.fillStyle = '#3b2a1e';
+    ctx.fillRect(x - 3, 31, 7, 10);
+    // aro dos óculos
+    ctx.strokeStyle = '#4a2e1f';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(x, 36, 17, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.fillRect(57, 33, 14, 4); // ponte dos óculos
+  // sorriso
+  ctx.fillStyle = '#7a2e2e';
+  ctx.beginPath();
+  ctx.moveTo(46, 70);
+  ctx.quadraticCurveTo(64, 92, 82, 70);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(52, 70, 24, 5);
+
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter; // pixels "quadradinhos", sem borrar
+  return t;
+}
 
 function criarTulio() {
   const tulio = criarPersonagem(TULIO, { mochila: false });
   const cabeca = tulio.userData.cabeca;
-  // óculos: duas armações redondas + ponte
-  for (const x of [-0.12, 0.12]) {
-    const aro = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.016, 6, 16), new THREE.MeshLambertMaterial({ color: 0x111111 }));
-    aro.position.set(x, 0.02, -0.28);
-    cabeca.add(aro);
-  }
-  const ponte = caixa(0.07, 0.02, 0.02, 0x111111);
-  ponte.position.set(0, 0.04, -0.28);
-  cabeca.add(ponte);
+  // o rosto pintado cobre os olhos e a boca simples do boneco
+  const rosto = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.45), new THREE.MeshLambertMaterial({ map: texturaRostoTulio() }));
+  rosto.position.set(0, -0.055, -0.285);
+  rosto.rotation.y = Math.PI; // virado para a frente do boneco (-Z)
+  cabeca.add(rosto);
   cabeca.add(criarCapelo());
-  // beca aberta na frente, mostrando o suéter
-  for (const x of [-0.24, 0.24]) {
-    const lado = caixa(0.2, 1.25, 0.42, 0x111827);
-    lado.position.set(x, 0.95, 0);
-    tulio.add(lado);
-  }
-  const costas = caixa(0.72, 1.25, 0.1, 0x111827);
-  costas.position.set(0, 0.95, 0.17);
-  tulio.add(costas);
+  // beca fechada
+  const beca = caixa(0.72, 1.25, 0.42, 0x111827);
+  beca.position.y = 0.95;
+  tulio.add(beca);
   return tulio;
-}
-
-// Placa do púlpito com a foto do professor
-function texturaPlacaTulio() {
-  const c = document.createElement('canvas');
-  c.width = 256;
-  c.height = 320;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#1e3a8a';
-  ctx.fillRect(0, 0, 256, 320);
-  ctx.strokeStyle = '#facc15';
-  ctx.lineWidth = 10;
-  ctx.strokeRect(5, 5, 246, 310);
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(128, 120, 90, 0, Math.PI * 2);
-  ctx.clip();
-  if (fotosProfessores['Túlio']) ctx.drawImage(fotosProfessores['Túlio'], 38, 30, 180, 180);
-  ctx.restore();
-  ctx.fillStyle = '#facc15';
-  ctx.font = '900 40px Nunito, Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Prof. Túlio', 128, 275);
-  return new THREE.CanvasTexture(c);
 }
 
 class Auditorio {
@@ -74,10 +87,10 @@ class Auditorio {
     this.montarSala();
     this.montarPlateia();
 
-    // Reitor no palco, virado para a esquerda (-X)
+    // Prof. Túlio no palco, virado na diagonal: olha para o formando e para a câmera
     this.reitor = criarTulio();
-    this.reitor.position.set(1.3, 1, -11.5);
-    this.reitor.rotation.y = Math.PI / 2;
+    this.reitor.position.set(1.15, 1, -11.8);
+    this.reitor.rotation.y = (Math.PI * 3) / 4;
     cena.add(this.reitor);
 
     // Jogador, de beca e capelo, entrando pelo fundo
@@ -95,7 +108,7 @@ class Auditorio {
     const fita = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.08, 12), new THREE.MeshLambertMaterial({ color: 0xdc2626 }));
     this.diploma.add(rolo, fita);
     this.diploma.rotation.z = Math.PI / 2;
-    this.diploma.position.set(0.85, 1.95, -11.5);
+    this.diploma.position.copy(this.maoDoTulio());
     cena.add(this.diploma);
 
     this.criarConfete();
@@ -104,6 +117,12 @@ class Auditorio {
       if (o.isMesh && !this.confete.includes(o)) o.castShadow = o.receiveShadow = true;
     });
     Sons.aplausos(2.5, 0.5);
+  }
+
+  // Posição (no mundo) da mão direita do Túlio, de onde sai o diploma.
+  maoDoTulio() {
+    this.reitor.updateMatrixWorld(true);
+    return this.reitor.userData.bracoD.localToWorld(new THREE.Vector3(0, -0.62, 0));
   }
 
   montarSala() {
@@ -151,9 +170,7 @@ class Auditorio {
 
     const pulpito = caixa(1.1, 1.3, 0.7, 0x3f2a14);
     pulpito.position.set(-3.5, 1.65, -12);
-    const placa = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.0), new THREE.MeshBasicMaterial({ map: texturaPlacaTulio() }));
-    placa.position.set(-3.5, 1.65, -11.64);
-    c.add(pulpito, placa);
+    c.add(pulpito);
   }
 
   montarPlateia() {
@@ -223,14 +240,15 @@ class Auditorio {
 
     // 4) Vira para o reitor e recebe o diploma (6,2 a 8 s)
     if (t >= 6.2 && t < 8.6) {
-      j.rotation.y = -Math.PI / 2 * suave(progresso(t, 6.2, 6.7));
+      // vira na diagonal, de costas para a câmera e de frente para o Túlio
+      j.rotation.y = (-Math.PI / 4) * suave(progresso(t, 6.2, 6.7));
       jp.bracoD.rotation.x = 1.3 * progresso(t, 6.7, 7.0);
       this.reitor.userData.bracoD.rotation.x = 1.3 * progresso(t, 6.4, 6.8);
       if (this.diploma.parent === this.cena) {
         j.updateMatrixWorld(true);
         const mao = jp.bracoD.localToWorld(new THREE.Vector3(0, -0.62, 0));
         const k = suave(progresso(t, 6.8, 8.0));
-        this.diploma.position.lerpVectors(new THREE.Vector3(0.85, 1.95, -11.5), mao, k);
+        this.diploma.position.lerpVectors(this.maoDoTulio(), mao, k);
         if (k >= 1) {
           // o diploma passa a "morar" na mão do jogador
           jp.bracoD.add(this.diploma);
@@ -248,7 +266,7 @@ class Auditorio {
         Sons.fanfarra();
         Sons.aplausos(4, 1);
       }
-      j.rotation.y = -Math.PI / 2 - (Math.PI / 2) * suave(progresso(t, 8.6, 9.2));
+      j.rotation.y = -Math.PI / 4 - ((Math.PI * 3) / 4) * suave(progresso(t, 8.6, 9.2));
       const braco = Math.PI * suave(progresso(t, 9.0, 9.5));
       jp.bracoD.rotation.x = Math.max(1.3, braco);
       jp.bracoE.rotation.x = braco;
@@ -271,11 +289,11 @@ class Auditorio {
       if (p.position.y < 0) p.position.y = 10;
     }
 
-    // Câmera: segue o jogador e depois vai para a frente do palco
+    // Câmera: segue o jogador e depois para atrás dele, de frente para o Túlio
     const seguir = new THREE.Vector3(0, 2.6 + j.position.y, j.position.z + 5);
     const olharSeguir = new THREE.Vector3(0, 1.5 + j.position.y, j.position.z - 4);
-    const frente = new THREE.Vector3(-0.6, 2.4, -4.2);
-    const olharFrente = new THREE.Vector3(0.4, 2.7, -11.5);
+    const frente = new THREE.Vector3(0.4, 2.7, -5.6);
+    const olharFrente = new THREE.Vector3(0.55, 2.3, -11.6);
     const k = suave(progresso(t, 5.8, 7.3));
     this.camera.position.lerpVectors(seguir, frente, k);
     this.camera.lookAt(new THREE.Vector3().lerpVectors(olharSeguir, olharFrente, k));
