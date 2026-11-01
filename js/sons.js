@@ -29,7 +29,7 @@ const Sons = {
   // por um toque do jogador. Então, no toque em "Começar", tocamos cada arquivo
   // em silêncio por um instante e pausamos. Depois ele pode tocar sozinho.
   desbloquearArquivos() {
-    for (const nome of ['applause', 'final']) {
+    for (const nome of ['applause', 'final2']) {
       const a = this.carregar(nome);
       if (a.desbloqueado) continue;
       a.muted = true;

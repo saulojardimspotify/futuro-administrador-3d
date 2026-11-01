@@ -118,7 +118,7 @@ class Auditorio {
     });
     // aplausos ao entrar no auditório; o áudio final já fica carregado
     Sons.tocarArquivo('applause', 0.9);
-    Sons.carregar('final');
+    Sons.carregar('final2');
   }
 
   // Posição (no mundo) da mão direita do Túlio, de onde sai o diploma.
@@ -266,7 +266,7 @@ class Auditorio {
       if (!this.comemorou) {
         this.comemorou = true;
         Sons.arquivos.applause.volume = 0.3; // aplausos baixam para o áudio final aparecer
-        Sons.tocarArquivo('final', 1);
+        Sons.tocarArquivo('final2', 1);
       }
       j.rotation.y = -Math.PI / 4 - ((Math.PI * 3) / 4) * suave(progresso(t, 8.6, 9.2));
       const braco = Math.PI * suave(progresso(t, 9.0, 9.5));
