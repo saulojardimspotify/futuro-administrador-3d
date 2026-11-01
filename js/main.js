@@ -11,6 +11,7 @@ let tela = 'selecao';
 let escolhido = 0;
 let nomeJogador = '';
 let fase = 1; // 1 = faculdade, 2 = estágio na empresa
+let segurandoAbaixo = false; // a tecla de abaixar está pressionada?
 
 let renderizador, cena, camera, sol, corredor, itens, jogador, previa, auditorio;
 const relogio = new THREE.Clock();
@@ -215,6 +216,8 @@ function atualizarJogo(dt) {
   }
 
   jogo.abaixado = Math.max(0, jogo.abaixado - dt);
+  // segurando a tecla: continua abaixado, sem "piscar" em pé entre uma repetição e outra
+  if (segurandoAbaixo && jogo.abaixado > 0) jogo.abaixado = Math.max(jogo.abaixado, 0.1);
   jogador.position.set(jogo.x, jogo.y, jogo.z);
   jogador.rotation.z = (jogo.x - alvoX) * 0.08;
   jogador.rotation.x = 0;
@@ -403,10 +406,19 @@ function configurarControles() {
     if (['ArrowLeft', 'a', 'A'].includes(e.key)) { if (!e.repeat) mover(-1); }
     else if (['ArrowRight', 'd', 'D'].includes(e.key)) { if (!e.repeat) mover(1); }
     else if ([' ', 'ArrowUp', 'w', 'W'].includes(e.key)) pular();
-    else if (['ArrowDown', 's', 'S'].includes(e.key)) abaixar();
+    else if (['ArrowDown', 's', 'S'].includes(e.key)) {
+      segurandoAbaixo = true;
+      if (!e.repeat) abaixar();
+    }
     else return;
     e.preventDefault();
   });
+
+  // Soltou a tecla de abaixar (ou a janela perdeu o foco): o boneco levanta quando o tempo acabar
+  addEventListener('keyup', (e) => {
+    if (['ArrowDown', 's', 'S'].includes(e.key)) segurandoAbaixo = false;
+  });
+  addEventListener('blur', () => (segurandoAbaixo = false));
 
   // Celular: deslizar o dedo
   let inicio = null;
