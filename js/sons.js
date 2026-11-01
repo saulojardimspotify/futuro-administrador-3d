@@ -22,6 +22,28 @@ const Sons = {
       this.saida.connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
+    this.desbloquearArquivos();
+  },
+
+  // Celular (principalmente iPhone) só deixa tocar um áudio que já foi "liberado"
+  // por um toque do jogador. Então, no toque em "Começar", tocamos cada arquivo
+  // em silêncio por um instante e pausamos. Depois ele pode tocar sozinho.
+  desbloquearArquivos() {
+    for (const nome of ['applause', 'final']) {
+      const a = this.carregar(nome);
+      if (a.desbloqueado) continue;
+      a.muted = true;
+      const promessa = a.play();
+      if (!promessa) continue;
+      promessa
+        .then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.muted = this.mudo;
+          a.desbloqueado = true;
+        })
+        .catch(() => {});
+    }
   },
 
   alternarMudo() {

@@ -81,7 +81,7 @@ class Auditorio {
     holofote.position.set(0, 12, -4);
     holofote.target.position.set(0, 1, -12);
     holofote.castShadow = true;
-    holofote.shadow.mapSize.set(1024, 1024);
+    holofote.shadow.mapSize.setScalar(CELULAR ? 512 : 1024);
     cena.add(holofote, holofote.target);
 
     this.montarSala();
@@ -207,7 +207,7 @@ class Auditorio {
     this.confete = [];
     const cores = [0xfacc15, 0xef4444, 0x22c55e, 0x3b82f6, 0xec4899, 0xffffff];
     const geo = new THREE.PlaneGeometry(0.14, 0.09);
-    for (let i = 0; i < 220; i++) {
+    for (let i = 0; i < (CELULAR ? 100 : 220); i++) {
       const p = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: cores[i % cores.length], side: THREE.DoubleSide }));
       p.position.set((Math.random() - 0.5) * 14, 8 + Math.random() * 6, -14 + Math.random() * 12);
       p.userData.vel = 1.2 + Math.random() * 1.8;

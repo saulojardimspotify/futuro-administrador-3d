@@ -7,7 +7,10 @@ html, body {
   font-family: Nunito, Arial, sans-serif;
   color: #fff;
 }
-#jogo { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#jogo { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+/* celular: sem zoom com dois toques e sem "puxar" a página ao deslizar */
+body { touch-action: manipulation; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+input { -webkit-user-select: text; user-select: text; }
 .escondido { display: none !important; }
 
 .painel {
@@ -180,4 +183,5 @@ input.erro { border-color: #ef4444; animation: tremer 0.3s; }
   .barra span { font-size: 11px; }
   #hud-lista li { font-size: 11px; padding: 4px 6px; }
   .aviso { font-size: 18px; }
+  #hud:not(.escondido) ~ .btn-som { top: auto; bottom: 16px; }
 }

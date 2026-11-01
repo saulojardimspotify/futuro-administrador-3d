@@ -20,12 +20,13 @@ let tremor = 0;
 const jogo = {};
 
 function iniciar() {
-  renderizador = new THREE.WebGLRenderer({ canvas: $('jogo'), antialias: true });
-  renderizador.setPixelRatio(Math.min(devicePixelRatio, 2));
+  // No celular: sem suavização de bordas e menos pixels por ponto = bem mais rápido
+  renderizador = new THREE.WebGLRenderer({ canvas: $('jogo'), antialias: !CELULAR, powerPreference: 'high-performance' });
+  renderizador.setPixelRatio(Math.min(devicePixelRatio, CELULAR ? 1.5 : 2));
   renderizador.setSize(innerWidth, innerHeight, false);
   // Sombras suaves
   renderizador.shadowMap.enabled = true;
-  renderizador.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderizador.shadowMap.type = CELULAR ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 
   cena = new THREE.Scene();
   cena.background = new THREE.Color(0xe6e1f0);
@@ -37,7 +38,7 @@ function iniciar() {
   sol = new THREE.DirectionalLight(0xfff1dc, 0.75);
   sol.position.set(3, 10, 6);
   sol.castShadow = true;
-  sol.shadow.mapSize.set(1024, 1024);
+  sol.shadow.mapSize.setScalar(CELULAR ? 512 : 1024);
   Object.assign(sol.shadow.camera, { left: -8, right: 8, top: 22, bottom: -22, near: 1, far: 40 });
   sol.shadow.bias = -0.0008;
   cena.add(sol, sol.target);

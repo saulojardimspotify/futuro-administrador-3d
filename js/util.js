@@ -1,5 +1,10 @@
 // Funções auxiliares usadas por vários arquivos do jogo.
 
+// true quando o jogo está num celular/tablet (tela de toque). Usado para deixar o jogo mais leve.
+const CELULAR =
+  /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  (window.matchMedia && matchMedia('(pointer: coarse)').matches);
+
 // Cria uma textura (imagem) com texto escrito, para colar em placas, livros etc.
 // O tamanho da fonte diminui sozinho até o texto caber.
 function criarTexturaTexto(linhas, opcoes) {
