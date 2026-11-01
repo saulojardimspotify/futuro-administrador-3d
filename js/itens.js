@@ -354,6 +354,7 @@ class Itens {
     this.cena = cena;
     this.lista = [];
     this.porta = null;
+    this.fase = 1;
     this.reiniciar();
   }
 
@@ -370,7 +371,7 @@ class Itens {
   // Disciplinas que podem aparecer (repetir é permitido, só não duas iguais na tela ao mesmo tempo).
   pendentes() {
     const naTela = this.lista.filter((i) => i.userData.tipo === 'livro').map((i) => i.userData.nome);
-    return DISCIPLINAS.filter((d) => !naTela.includes(d.nome));
+    return FASES[this.fase].colecao.filter((d) => !naTela.includes(d.nome));
   }
 
   adicionar(objeto, faixa, z, dados) {
@@ -384,19 +385,20 @@ class Itens {
   // Cria uma "fileira": 1 ou 2 obstáculos e, às vezes, um livro numa faixa livre.
   // Se o jogador tem só 1 vida, às vezes aparece também uma xícara de café.
   gerarFileira(z, jogo) {
+    const fase = FASES[this.fase];
     const faixas = [-1, 0, 1].sort(() => Math.random() - 0.5);
     const qtd = Math.random() < 0.35 ? 2 : 1;
-    const tipos = Object.keys(OBSTACULOS);
+    const tipos = Object.keys(fase.obstaculos);
     for (let i = 0; i < qtd; i++) {
       const tipo = tipos[Math.floor(Math.random() * tipos.length)];
-      this.adicionar(criarObstaculo(tipo), faixas[i], z, Object.assign({ tipo: 'obstaculo' }, OBSTACULOS[tipo]));
+      this.adicionar(fase.criarObstaculo(tipo), faixas[i], z, Object.assign({ tipo: 'obstaculo' }, fase.obstaculos[tipo]));
     }
     const livres = faixas.slice(qtd);
     const pendentes = this.pendentes();
     if (pendentes.length && Math.random() < 0.5) {
-      const disciplina = pendentes[Math.floor(Math.random() * pendentes.length)];
-      const livro = criarLivro(disciplina);
-      this.adicionar(livro, livres.shift(), z, { tipo: 'livro', nome: disciplina.nome });
+      // fase 1: livro da disciplina; fase 2: meta batida (o tipo continua "livro" nas regras)
+      const item = pendentes[Math.floor(Math.random() * pendentes.length)];
+      this.adicionar(fase.criarColetavel(item), livres.shift(), z, { tipo: 'livro', nome: item.nome });
     }
     const temCafe = this.lista.some((i) => i.userData.tipo === 'cafe');
     if (jogo.vidas === 1 && livres.length && !temCafe && Math.random() < 0.3) {
@@ -421,6 +423,8 @@ class Itens {
         item.position.y = 0.12 + Math.sin(t * 2 + item.position.z) * 0.1;
       } else if (d.dancarinos) {
         this.animarFesta(d, t);
+      } else if (d.animar) {
+        d.animar(t);
       } else if (d.tipo === 'cafe') {
         // o café só existe enquanto o jogador tem 1 vida
         if (jogo.vidas > 1) {

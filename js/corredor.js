@@ -13,17 +13,28 @@ class Corredor {
     this.texturaPiso = this.criarTexturaPiso();
     this.texturaArmario = this.criarTexturaArmario();
     this.placas = {};
-    this.segmentos = [];
+    // Dois cenários: o corredor da faculdade (fase 1) e o da empresa (fase 2).
+    // Os dois ficam prontos; só o tema escolhido fica visível.
+    this.temas = { faculdade: [], empresa: [] };
     for (let i = 0; i < NUM_SEGMENTOS; i++) {
-      const seg = this.criarSegmento();
-      cena.add(seg);
-      this.segmentos.push(seg);
+      this.temas.faculdade.push(this.criarSegmento());
+      this.temas.empresa.push(this.criarSegmentoEmpresa());
     }
+    for (const seg of [...this.temas.faculdade, ...this.temas.empresa]) cena.add(seg);
+    this.usarTema('faculdade');
+  }
+
+  usarTema(nome) {
+    this.tema = nome;
+    for (const [tema, segmentos] of Object.entries(this.temas)) {
+      segmentos.forEach((seg) => (seg.visible = tema === nome));
+    }
+    this.segmentos = this.temas[nome];
     this.reiniciar();
   }
 
   reiniciar() {
-    this.proximaSala = 101;
+    this.proximaSala = this.tema === 'empresa' ? 201 : 101;
     this.segmentos.forEach((seg, i) => {
       seg.position.z = TAM_SEGMENTO / 2 - i * TAM_SEGMENTO;
       this.numerarSalas(seg);
@@ -53,6 +64,157 @@ class Corredor {
       });
     }
     return this.placas[numero];
+  }
+
+  // ---------- Cenário da fase 2: corredor de empresa ----------
+
+  criarSegmentoEmpresa() {
+    if (!this.pisoEmpresa) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#9aa3b0';
+      ctx.fillRect(0, 0, 128, 128);
+      ctx.fillStyle = '#a9b2be';
+      ctx.fillRect(6, 6, 116, 116);
+      ctx.strokeStyle = '#c3cad3';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(0, 0, 128, 128);
+      this.pisoEmpresa = new THREE.CanvasTexture(c);
+      this.pisoEmpresa.wrapS = this.pisoEmpresa.wrapT = THREE.RepeatWrapping;
+      this.pisoEmpresa.repeat.set(4, 8);
+      this.texturaGrafico = this.criarTexturaGrafico();
+    }
+    const seg = new THREE.Group();
+
+    const piso = new THREE.Mesh(
+      new THREE.PlaneGeometry(LARGURA_CORREDOR, TAM_SEGMENTO),
+      new THREE.MeshPhongMaterial({ map: this.pisoEmpresa, specular: 0x555566, shininess: 30 })
+    );
+    piso.rotation.x = -Math.PI / 2;
+    piso.receiveShadow = true;
+    seg.add(piso);
+    for (const x of [-1, 1]) {
+      for (let k = 0; k < 4; k++) {
+        const traco = caixa(0.1, 0.02, 2.2, 0xfacc15);
+        traco.position.set(x, 0.01, -6 + k * 4);
+        seg.add(traco);
+      }
+    }
+
+    const teto = new THREE.Mesh(new THREE.PlaneGeometry(LARGURA_CORREDOR, TAM_SEGMENTO), new THREE.MeshLambertMaterial({ color: 0xf8fafc }));
+    teto.rotation.x = Math.PI / 2;
+    teto.position.y = ALTURA_CORREDOR;
+    seg.add(teto);
+    for (const z of [-6, -2, 2, 6]) {
+      const luz = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 1.2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      luz.position.set(0, ALTURA_CORREDOR - 0.03, z);
+      seg.add(luz);
+    }
+
+    this.criarLadoEmpresa(seg, -1);
+    this.criarLadoEmpresa(seg, 1);
+    return seg;
+  }
+
+  // Parede branca com sala de reunião de vidro, baia com computadores, gráfico e bebedouro.
+  criarLadoEmpresa(seg, lado) {
+    const xParede = (lado * LARGURA_CORREDOR) / 2;
+    const dentro = -lado;
+    const x = (dist) => xParede + dentro * dist; // posição a "dist" metros da parede
+
+    const parede = caixa(0.2, ALTURA_CORREDOR, TAM_SEGMENTO, 0xf8fafc);
+    parede.position.set(xParede + lado * 0.1, ALTURA_CORREDOR / 2, 0);
+    const faixa = caixa(0.04, 0.18, TAM_SEGMENTO, 0x0f766e); // faixa na cor da empresa
+    faixa.position.set(x(0.02), 3.3, 0);
+    const rodape = caixa(0.06, 0.2, TAM_SEGMENTO, 0x475569);
+    rodape.position.set(x(0.03), 0.1, 0);
+    seg.add(parede, faixa, rodape);
+
+    // Sala de reunião de vidro (z de -7 a -1)
+    const vidro = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 2.6),
+      new THREE.MeshLambertMaterial({ color: 0x9fd3f5, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+    );
+    vidro.position.set(x(0.9), 1.3, -4);
+    vidro.rotation.y = Math.PI / 2;
+    seg.add(vidro);
+    for (const z of [-7, -5, -3, -1]) {
+      const poste = caixa(0.08, 2.6, 0.08, 0x475569);
+      poste.position.set(x(0.9), 1.3, z);
+      seg.add(poste);
+    }
+    const viga = caixa(0.08, 0.1, 6, 0x475569);
+    viga.position.set(x(0.9), 2.6, -4);
+    const mesa = caixa(0.55, 0.75, 2.4, 0xe5e7eb);
+    mesa.position.set(x(0.4), 0.375, -4);
+    seg.add(viga, mesa);
+    const placa = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.38), new THREE.MeshBasicMaterial());
+    placa.position.set(x(0.02), 3.0, -4);
+    placa.rotation.y = dentro * (Math.PI / 2);
+    seg.add(placa);
+    seg.userData[lado < 0 ? 'placaE' : 'placaD'] = placa;
+
+    // Baia aberta para o corredor (z de 1 a 4)
+    const mesaBaia = caixa(0.7, 0.75, 2.8, 0xe2e8f0);
+    mesaBaia.position.set(x(0.4), 0.375, 2.5);
+    seg.add(mesaBaia);
+    for (const z of [0.95, 4.05]) {
+      const divisoria = caixa(1.0, 1.25, 0.06, 0x64748b);
+      divisoria.position.set(x(0.5), 0.625, z);
+      seg.add(divisoria);
+    }
+    for (const z of [1.8, 3.2]) {
+      const monitor = caixa(0.06, 0.42, 0.62, 0x111827);
+      monitor.position.set(x(0.45), 1.0, z);
+      const tela = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.36), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+      tela.position.set(x(0.485), 1.0, z);
+      tela.rotation.y = dentro * (Math.PI / 2);
+      seg.add(monitor, tela);
+    }
+    const cadeira = caixa(0.45, 0.9, 0.45, 0x1f2937);
+    cadeira.position.set(x(1.0), 0.45, 2.5);
+    seg.add(cadeira);
+
+    // Quadro com gráfico de barras na parede, acima da baia
+    const grafico = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.0), new THREE.MeshBasicMaterial({ map: this.texturaGrafico }));
+    grafico.position.set(x(0.02), 2.2, 2.5);
+    grafico.rotation.y = dentro * (Math.PI / 2);
+    seg.add(grafico);
+
+    // Bebedouro
+    const base = caixa(0.4, 1.0, 0.4, 0xe5e7eb);
+    base.position.set(x(0.3), 0.5, 6.3);
+    const galao = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.17, 0.17, 0.45, 14),
+      new THREE.MeshLambertMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.8 })
+    );
+    galao.position.set(x(0.3), 1.25, 6.3);
+    seg.add(base, galao);
+  }
+
+  criarTexturaGrafico() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 160;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 160);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, 248, 152);
+    ['#38bdf8', '#22c55e', '#facc15', '#f97316', '#0f766e'].forEach((cor, i) => {
+      const altura = 25 + i * 20;
+      ctx.fillStyle = cor;
+      ctx.fillRect(30 + i * 42, 140 - altura, 28, altura);
+    });
+    ctx.strokeStyle = '#16a34a';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(30, 110);
+    ctx.lineTo(225, 25);
+    ctx.stroke();
+    return new THREE.CanvasTexture(c);
   }
 
   criarTexturaPiso() {

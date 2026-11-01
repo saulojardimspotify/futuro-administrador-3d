@@ -10,6 +10,7 @@ const $ = (id) => document.getElementById(id);
 let tela = 'selecao';
 let escolhido = 0;
 let nomeJogador = '';
+let fase = 1; // 1 = faculdade, 2 = estágio na empresa
 
 let renderizador, cena, camera, sol, corredor, itens, jogador, previa, auditorio;
 const relogio = new THREE.Clock();
@@ -68,10 +69,12 @@ function montarSelecao() {
     $('nome').classList.remove('erro');
     $('previa-nome').textContent = `Futuro Administrador ${$('nome').value.trim() || '...'}`;
   });
-  $('btn-comecar').onclick = comecarPartida;
-  $('btn-tentar').onclick = comecarPartida;
-  $('btn-denovo').onclick = comecarPartida;
-  document.querySelectorAll('.btn-trocar').forEach((b) => (b.onclick = voltarSelecao));
+  $('btn-comecar').onclick = () => comecarPartida(1);
+  $('btn-tentar').onclick = () => comecarPartida(fase);
+  $('btn-denovo').onclick = () => comecarPartida(1);
+  $('btn-fase2').onclick = () => comecarPartida(2);
+  $('btn-denovo2').onclick = () => comecarPartida(2);
+  document.querySelectorAll('.btn-inicio').forEach((b) => (b.onclick = voltarInicio));
 
   escolher(0);
 }
@@ -91,21 +94,39 @@ function voltarSelecao() {
   Sons.pararArquivos();
   auditorio = null;
   if (jogador) cena.remove(jogador);
+  fase = 1;
+  itens.fase = 1;
   itens.reiniciar();
-  corredor.reiniciar();
+  aplicarTema();
   esconderTelas();
   HUD.esconder();
   $('tela-selecao').classList.remove('escondido');
   escolher(escolhido);
 }
 
+// "Voltar ao início": volta para a tela de abertura com a foto da faculdade
+function voltarInicio() {
+  voltarSelecao();
+  $('tela-capa').classList.remove('escondido');
+}
+
+// Troca o cenário (faculdade ou empresa) e a cor do "céu"/neblina conforme a fase
+function aplicarTema() {
+  const config = FASES[fase];
+  corredor.usarTema(config.tema);
+  cena.background.setHex(config.corFundo);
+  cena.fog.color.setHex(config.corFundo);
+}
+
 function esconderTelas() {
-  ['tela-selecao', 'tela-fim', 'tela-vitoria'].forEach((id) => $(id).classList.add('escondido'));
+  ['tela-selecao', 'tela-fim', 'tela-vitoria', 'tela-promocao'].forEach((id) => $(id).classList.add('escondido'));
 }
 
 // ---------- Partida ----------
 
-function comecarPartida() {
+function comecarPartida(numFase = 1) {
+  fase = numFase;
+  itens.fase = numFase;
   const nome = $('nome').value.trim();
   if (!nome) {
     $('nome').classList.add('erro');
@@ -126,7 +147,7 @@ function comecarPartida() {
   cena.add(jogador);
 
   auditorio = null;
-  corredor.reiniciar();
+  aplicarTema();
   itens.reiniciar();
   Object.assign(jogo, {
     z: 0, x: 0, y: 0, vy: 0, faixa: 0, vel: 10, tempo: 0,
@@ -134,7 +155,7 @@ function comecarPartida() {
   });
 
   esconderTelas();
-  HUD.mostrar(def, nome);
+  HUD.mostrar(def, nome, fase);
   tela = 'jogando';
   Sons.pararArquivos();
   Sons.iniciar();
@@ -155,8 +176,10 @@ function pular() {
 
 function atualizarJogo(dt) {
   jogo.tempo += dt;
-  // Fica mais rápido com o tempo e, principalmente, a cada disciplina conquistada
-  jogo.vel = Math.min(9 + jogo.tempo * 0.06 + itens.coletadas.length * 0.5, 28);
+  // Fica mais rápido com o tempo e, principalmente, a cada item conquistado.
+  // A fase 2 já começa bem mais rápida (veja FASES em fase2.js).
+  const [inicial, porSegundo, porItem, maxima] = FASES[fase].vel;
+  jogo.vel = Math.min(inicial + jogo.tempo * porSegundo + itens.coletadas.length * porItem, maxima);
   jogo.z -= jogo.vel * dt;
 
   // Desliza suavemente até a faixa escolhida
@@ -208,8 +231,11 @@ function atualizarJogo(dt) {
     }
   }
 
-  // Pegou as 15? Aparece a porta do auditório
-  if (!jogo.final && itens.coletadas.length >= META_DISCIPLINAS) {
+  // Fase 2: bateu todas as metas? Promoção!
+  if (fase === 2 && itens.coletadas.length >= FASES[2].meta) return promover();
+
+  // Fase 1: pegou todas as disciplinas? Aparece a porta do auditório
+  if (fase === 1 && !jogo.final && itens.coletadas.length >= META_DISCIPLINAS) {
     jogo.final = true;
     jogo.zPorta = itens.criarPorta(jogo.z);
     HUD.aviso('Todas as disciplinas concluídas! Siga para o Auditório 🎓', 'final');
@@ -246,15 +272,35 @@ function fimDeJogo() {
   Sons.pararMusica();
   Sons.gameOver();
   setTimeout(() => {
+    const config = FASES[fase];
+    $('fim-titulo').textContent = fase === 2 ? '😢 Você foi desligado do estágio' : '😢 Você trancou o curso';
     $('fim-texto').innerHTML =
-      `Você concluiu <b>${itens.coletadas.length} de ${META_DISCIPLINAS}</b> disciplinas<br>e fez <b>${Math.floor(jogo.pontos)}</b> pontos.`;
+      `Você conquistou <b>${itens.coletadas.length} de ${config.meta}</b> ${config.unidade}<br>e fez <b>${Math.floor(jogo.pontos)}</b> pontos.`;
     $('fim-ranking').innerHTML = Ranking.html(
-      Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: false })
+      Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: false, fase })
     );
     $('tela-fim').classList.remove('escondido');
     HUD.esconder();
     tela = 'fim';
   }, 1200);
+}
+
+// Fim da fase 2: sem cena, direto para a tela de promoção (o boneco comemora pulando)
+function promover() {
+  tela = 'promovido';
+  jogador.visible = true;
+  Sons.pararMusica();
+  Sons.todasDisciplinas();
+  Sons.tocarArquivo('applause', 0.9);
+  HUD.esconder();
+  const def = PERSONAGENS[escolhido];
+  $('promocao-titulo').textContent = def.mulher ? 'Promovida!' : 'Promovido!';
+  $('promocao-texto').innerHTML =
+    `Parabéns, <b>${escaparHtml(nomeJogador)}</b>!<br>Você bateu todas as metas e foi ${def.mulher ? 'efetivada' : 'efetivado'} na empresa.<br>Pontuação: <b>${Math.floor(jogo.pontos)}</b>`;
+  $('promocao-ranking').innerHTML = Ranking.html(
+    Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), promovido: true, fase: 2 })
+  );
+  $('tela-promocao').classList.remove('escondido');
 }
 
 function irParaAuditorio() {
@@ -269,7 +315,7 @@ function irParaAuditorio() {
       $('vitoria-texto').innerHTML =
         `Parabéns, <b>${escaparHtml(nomeJogador)}</b>!<br>Agora você é ${titulo}.<br>Pontuação final: <b>${Math.floor(jogo.pontos)}</b>`;
       $('vitoria-ranking').innerHTML = Ranking.html(
-        Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: true })
+        Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: true, fase: 1 })
       );
       $('tela-vitoria').classList.remove('escondido');
     });
@@ -384,6 +430,10 @@ function laco() {
   } else if (tela === 'caindo') {
     jogador.rotation.x = Math.max(jogador.rotation.x - dt * 4, -Math.PI / 2);
     jogador.position.y = Math.max(jogador.position.y - dt * 3, 0.25);
+  } else if (tela === 'promovido') {
+    // comemorando: pulinhos com os braços para cima
+    jogador.position.y = Math.abs(Math.sin(tempoTotal * 6)) * 0.4;
+    jogador.userData.bracoE.rotation.x = jogador.userData.bracoD.rotation.x = Math.PI;
   } else if (tela === 'transicao') {
     jogo.z -= 6 * dt;
     jogador.position.z = jogo.z;

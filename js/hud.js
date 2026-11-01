@@ -4,9 +4,15 @@
 const HUD = {
   el: (id) => document.getElementById(id),
 
-  mostrar(def, nome) {
+  mostrar(def, nome, fase = 1) {
+    const config = FASES[fase];
+    this.total = config.meta;
+    this.unidade = config.unidade;
+    const titulo = fase === 2 ? (def.mulher ? 'Estagiária' : 'Estagiário') : 'Futuro Administrador';
     this.el('hud-avatar').src = def.retratoRosto;
-    this.el('hud-nome').textContent = `Futuro Administrador ${nome}`;
+    this.el('hud-nome').textContent = `${titulo} ${nome}`;
+    this.el('hud-curso').textContent = config.curso;
+    this.el('hud-titulo').textContent = config.titulo;
     this.vidas(3);
     this.pontos(0);
     this.disciplinas([]);
@@ -27,10 +33,11 @@ const HUD = {
     this.el('hud-pontos').textContent = Math.floor(p);
   },
 
+  // Barra de progresso e as últimas disciplinas (fase 1) ou metas (fase 2) conquistadas
   disciplinas(lista) {
-    const total = META_DISCIPLINAS;
-    this.el('hud-barra').style.width = `${(lista.length / total) * 100}%`;
-    this.el('hud-progresso').textContent = `${lista.length} / ${total} disciplinas`;
+    const total = this.total;
+    this.el('hud-barra').style.width = `${Math.min(1, lista.length / total) * 100}%`;
+    this.el('hud-progresso').textContent = `${lista.length} / ${total} ${this.unidade}`;
     // mostra as 4 últimas, a mais recente em cima
     this.el('hud-lista').innerHTML = lista
       .slice(-4)

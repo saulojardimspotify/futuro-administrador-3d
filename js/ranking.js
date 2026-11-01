@@ -33,7 +33,7 @@ const Ranking = {
   html({ lista, id }) {
     const linhas = lista
       .map((r, i) => `<li class="${r.id === id ? 'eu' : ''}">
-        <span>${i + 1}º ${escaparHtml(r.nome)} ${r.formou ? '🎓' : ''}</span><b>${r.pontos}</b></li>`)
+        <span>${i + 1}º ${escaparHtml(r.nome)} ${r.formou ? '🎓' : ''}${r.promovido ? '🏆' : ''}${r.fase === 2 && !r.promovido ? '🏢' : ''}</span><b>${r.pontos}</b></li>`)
       .join('');
     const fora = lista.some((r) => r.id === id) ? '' : '<p class="fora">Sua pontuação não entrou no top 10.</p>';
     return `<h3>🏆 Ranking deste computador</h3><ol class="ranking">${linhas}</ol>${fora}`;
