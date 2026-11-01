@@ -151,7 +151,7 @@ function comecarPartida(numFase = 1) {
   itens.reiniciar();
   Object.assign(jogo, {
     z: 0, x: 0, y: 0, vy: 0, faixa: 0, vel: 10, tempo: 0,
-    pontos: 0, vidas: 3, invencivel: 0, final: false, zPorta: 0, travado: false,
+    pontos: 0, vidas: 3, invencivel: 0, final: false, zPorta: 0, travado: false, abaixado: 0,
   });
 
   esconderTelas();
@@ -169,9 +169,27 @@ function mover(direcao) {
 }
 
 function pular() {
-  if (jogo.y > 0) return;
+  if (jogo.y > 0 || jogo.abaixado > 0) return;
   jogo.vy = 7.8;
   Sons.pulo();
+}
+
+// Abaixar: o boneco se agacha e desliza por quase 1 segundo (para passar por baixo da mesa).
+// Se estiver no ar, ele desce rápido.
+function abaixar() {
+  if (jogo.abaixado > 0) return;
+  if (jogo.y > 0) jogo.vy = -14;
+  jogo.abaixado = 0.9;
+  Sons.abaixar();
+}
+
+// Pose agachado deslizando: corpo inclinado para trás, pernas para a frente
+function poseAbaixado(boneco) {
+  const p = boneco.userData;
+  boneco.rotation.x = 0.9;
+  boneco.position.y -= 0.55;
+  p.pernaE.rotation.x = p.pernaD.rotation.x = 1.2;
+  p.bracoE.rotation.x = p.bracoD.rotation.x = -0.6;
 }
 
 function atualizarJogo(dt) {
@@ -196,9 +214,12 @@ function atualizarJogo(dt) {
     }
   }
 
+  jogo.abaixado = Math.max(0, jogo.abaixado - dt);
   jogador.position.set(jogo.x, jogo.y, jogo.z);
   jogador.rotation.z = (jogo.x - alvoX) * 0.08;
-  if (jogo.y > 0) poseSalto(jogador);
+  jogador.rotation.x = 0;
+  if (jogo.abaixado > 0 && jogo.y === 0) poseAbaixado(jogador);
+  else if (jogo.y > 0) poseSalto(jogador);
   else animarCorrida(jogador, jogo.tempo * jogo.vel * 0.9);
 
   if (jogo.invencivel > 0) {
@@ -382,6 +403,7 @@ function configurarControles() {
     if (['ArrowLeft', 'a', 'A'].includes(e.key)) { if (!e.repeat) mover(-1); }
     else if (['ArrowRight', 'd', 'D'].includes(e.key)) { if (!e.repeat) mover(1); }
     else if ([' ', 'ArrowUp', 'w', 'W'].includes(e.key)) pular();
+    else if (['ArrowDown', 's', 'S'].includes(e.key)) abaixar();
     else return;
     e.preventDefault();
   });
@@ -396,6 +418,7 @@ function configurarControles() {
     const dy = fim.clientY - inicio.clientY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) mover(Math.sign(dx));
     else if (dy < -30) pular();
+    else if (dy > 30) abaixar();
     inicio = null;
   });
 }

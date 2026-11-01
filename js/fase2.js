@@ -13,6 +13,8 @@ const OBSTACULOS_FASE2 = {
   chefe: { nome: 'Chefe bravo', alto: true },
   reuniao: { nome: 'Reunião inútil', alto: true },
   prazo: { nome: 'Prazo estourado', alto: false, altura: 0.95 },
+  // alta demais para pular: só passa abaixando (↓) ou trocando de faixa
+  mesa: { nome: 'Mesa de documentos', passarPorBaixo: true },
 };
 
 // Rosto bravo "pintado": sobrancelhas em V, boca para baixo e bochechas vermelhas.
@@ -55,6 +57,7 @@ function prepararTexturasFase2() {
     bla: criarTexturaTexto('blá blá blá...', { largura: 384, altura: 140, fundo: '#ffffff', cor: '#334155', borda: '#94a3b8' }),
     prazo: criarTexturaTexto('PRAZO ESTOURADO', { largura: 384, altura: 100, fundo: '#facc15', cor: '#b91c1c' }),
     relogio: criarTexturaRelogio(),
+    abaixe: criarTexturaTexto('↓ ABAIXE ↓', { largura: 384, altura: 100, fundo: '#facc15', cor: '#111827' }),
   };
   return texturasFase2;
 }
@@ -186,9 +189,42 @@ function criarPrazo() {
   return g;
 }
 
+// Mesa alta com pilhas de documentos e pastas em cima. Por baixo fica um vão para deslizar.
+function criarMesaDocumentos() {
+  const t = prepararTexturasFase2();
+  const g = new THREE.Group();
+  const tampo = caixa(1.8, 0.1, 1.0, 0x8b5a2b);
+  tampo.position.y = 1.3;
+  g.add(tampo);
+  for (const [x, z] of [[-0.82, -0.42], [0.82, -0.42], [-0.82, 0.42], [0.82, 0.42]]) {
+    const perna = caixa(0.08, 1.25, 0.08, 0x5b3a1e);
+    perna.position.set(x, 0.625, z);
+    g.add(perna);
+  }
+  // pilhas de papel (um pouco tortas) e pastas coloridas
+  [[-0.6, 0.55], [-0.15, 0.75], [0.3, 0.45], [0.65, 0.65]].forEach(([x, altura], i) => {
+    const pilha = caixa(0.36, altura, 0.48, i % 2 ? 0xf8fafc : 0xfef9c3);
+    pilha.position.set(x, 1.35 + altura / 2, -0.1 + (i % 2) * 0.15);
+    pilha.rotation.y = (i - 1.5) * 0.12;
+    g.add(pilha);
+  });
+  [0xdc2626, 0x2563eb, 0x16a34a].forEach((cor, i) => {
+    const pasta = caixa(0.42, 0.06, 0.55, cor);
+    pasta.position.set(-0.4 + i * 0.4, 1.38 + i * 0.07, 0.25);
+    pasta.rotation.y = 0.2 - i * 0.2;
+    g.add(pasta);
+  });
+  // aviso na frente da mesa
+  const aviso = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.3), new THREE.MeshBasicMaterial({ map: t.abaixe }));
+  aviso.position.set(0, 1.12, 0.51);
+  g.add(aviso);
+  return g;
+}
+
 function criarObstaculoFase2(tipo) {
   if (tipo === 'chefe') return criarChefe();
   if (tipo === 'reuniao') return criarReuniao();
+  if (tipo === 'mesa') return criarMesaDocumentos();
   return criarPrazo();
 }
 

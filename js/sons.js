@@ -140,6 +140,11 @@ const Sons = {
     this.nota(280, 0, 0.22, 'triangle', 0.22, 760);
   },
 
+  abaixar() {
+    this.nota(620, 0, 0.25, 'triangle', 0.18, 180);
+    this.ruido(0, 0.25, 0.12, 2500);
+  },
+
   faixa() {
     this.nota(520, 0, 0.05, 'triangle', 0.1);
   },

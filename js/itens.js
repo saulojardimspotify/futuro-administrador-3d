@@ -456,7 +456,9 @@ class Itens {
           this.remover(item);
           continue;
         }
-        if (d.tipo === 'obstaculo' && dx < 1.0 && (d.alto || jogo.y < d.altura)) {
+        // mesa: só passa abaixado; os outros: alto = desviar, baixo = pular por cima
+        const acertou = d.passarPorBaixo ? !(jogo.abaixado > 0) : d.alto || jogo.y < d.altura;
+        if (d.tipo === 'obstaculo' && dx < 1.0 && acertou) {
           d.usado = true;
           eventos.push({ tipo: 'obstaculo', nome: d.nome });
         }
