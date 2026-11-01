@@ -27,7 +27,35 @@ const Sons = {
   alternarMudo() {
     this.mudo = !this.mudo;
     if (this.saida) this.saida.gain.value = this.mudo ? 0 : this.VOLUME;
+    for (const a of Object.values(this.arquivos)) a.muted = this.mudo;
     return this.mudo;
+  },
+
+  // ---------- Arquivos de áudio (pasta "sons") ----------
+  // Usamos o elemento <audio> do navegador, que funciona até abrindo o index.html direto.
+
+  arquivos: {},
+
+  carregar(nome) {
+    if (!this.arquivos[nome]) {
+      const a = new Audio(`sons/${nome}.mp3`);
+      a.preload = 'auto';
+      this.arquivos[nome] = a;
+    }
+    return this.arquivos[nome];
+  },
+
+  tocarArquivo(nome, volume = 1) {
+    const a = this.carregar(nome);
+    a.muted = this.mudo;
+    a.volume = volume;
+    a.currentTime = 0;
+    a.play().catch(() => {}); // se o navegador bloquear, o jogo segue sem som
+    return a;
+  },
+
+  pararArquivos() {
+    for (const a of Object.values(this.arquivos)) a.pause();
   },
 
   // Toca uma nota. "inicio" é daqui a quantos segundos; freqFim faz o tom deslizar.

@@ -87,6 +87,7 @@ function escolher(i) {
 function voltarSelecao() {
   tela = 'selecao';
   Sons.pararMusica();
+  Sons.pararArquivos();
   auditorio = null;
   if (jogador) cena.remove(jogador);
   itens.reiniciar();
@@ -134,6 +135,7 @@ function comecarPartida() {
   esconderTelas();
   HUD.mostrar(def, nome);
   tela = 'jogando';
+  Sons.pararArquivos();
   Sons.iniciar();
   Sons.iniciarMusica();
 }
