@@ -1,0 +1,170 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #1a1f4d;
+  font-family: Nunito, Arial, sans-serif;
+  color: #fff;
+}
+#jogo { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.escondido { display: none !important; }
+
+.painel {
+  background: rgba(16, 28, 84, 0.9);
+  border: 2px solid rgba(120, 150, 255, 0.35);
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- Telas ---------- */
+.tela {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+#tela-selecao { justify-content: flex-end; }
+#tela-vitoria { align-items: flex-end; }
+.painel-selecao {
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 22px 24px;
+  text-align: center;
+}
+h1 { margin: 0; font-size: 30px; font-weight: 900; color: #facc15; }
+h2 { margin: 0 0 8px; font-size: 28px; font-weight: 900; }
+.sub { margin: 4px 0 14px; opacity: 0.85; }
+
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.card {
+  background: linear-gradient(#c7d7ff, #8fa8f5);
+  border: 3px solid transparent;
+  border-radius: 14px;
+  padding: 6px 4px 8px;
+  cursor: pointer;
+  font: 700 12px Nunito, Arial, sans-serif;
+  color: #1e2a5a;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.card img { width: 100%; aspect-ratio: 1; display: block; }
+.card:hover { transform: translateY(-3px); }
+.card.ativo { border-color: #facc15; box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.4); }
+
+label { display: block; margin: 16px 0 6px; font-weight: 800; text-align: left; }
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 2px solid #6b7fd7;
+  font: 800 18px Nunito, Arial, sans-serif;
+  outline: none;
+}
+input.erro { border-color: #ef4444; animation: tremer 0.3s; }
+@keyframes tremer { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.previa { margin: 8px 0 14px; color: #93c5fd; font-weight: 800; }
+.dica { margin: 12px 0 0; font-size: 13px; opacity: 0.7; }
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(#4ade80, #16a34a);
+  color: #fff;
+  font: 900 20px Nunito, Arial, sans-serif;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.btn:hover { filter: brightness(1.1); }
+.btn.secundario { background: #334a9e; font-size: 16px; }
+
+.painel-msg { width: min(440px, 100%); padding: 26px; text-align: center; }
+.painel-msg p { font-size: 18px; line-height: 1.5; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; }
+.hud-esq {
+  position: absolute; top: 16px; left: 16px;
+  width: 210px; padding: 14px; text-align: center;
+}
+#hud-avatar {
+  width: 110px; height: 110px; border-radius: 16px;
+  background: linear-gradient(#bcd2ff, #7f9cf5); border: 3px solid #fff;
+}
+.hud-nome { font-weight: 900; font-size: 16px; margin-top: 6px; }
+.hud-curso { color: #60a5fa; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
+.hud-rotulo { margin-top: 10px; font-size: 12px; font-weight: 800; opacity: 0.85; }
+.vidas { font-size: 28px; letter-spacing: 4px; }
+.vidas .cheio { color: #ef4444; }
+.vidas .vazio { color: #fca5a5; }
+.pontos { font-size: 38px; font-weight: 900; color: #facc15; line-height: 1.1; }
+
+.hud-dir { position: absolute; top: 16px; right: 16px; width: 250px; padding: 14px; }
+.hud-titulo { font-weight: 900; font-size: 17px; margin-bottom: 10px; }
+.barra {
+  position: relative; height: 28px; border-radius: 14px;
+  border: 2px solid #fff; background: #0b1440; overflow: hidden;
+}
+.barra-cheia { height: 100%; width: 0; background: linear-gradient(#4ade80, #16a34a); transition: width 0.4s; }
+.barra span {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 14px;
+}
+#hud-lista { list-style: none; margin: 10px 0 0; padding: 0; }
+#hud-lista li {
+  margin-top: 6px; padding: 7px 10px; border-radius: 10px;
+  background: rgba(37, 56, 140, 0.9); border: 1px solid rgba(120, 150, 255, 0.4);
+  font-weight: 800; font-size: 14px;
+}
+
+.aviso {
+  position: absolute; top: 34%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  padding: 12px 22px; border-radius: 14px;
+  font-weight: 900; font-size: 24px; text-align: center;
+  opacity: 0; transition: opacity 0.2s, transform 0.2s;
+  max-width: calc(100% - 32px);
+}
+.aviso.visivel { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.aviso.bom { background: #16a34a; }
+.aviso.ruim { background: #dc2626; }
+.aviso.final { background: #1e3a8a; border: 3px solid #facc15; color: #facc15; }
+
+.btn-som {
+  position: fixed; top: 16px; left: 16px;
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 2px solid rgba(120, 150, 255, 0.5); background: rgba(16, 28, 84, 0.9);
+  font-size: 22px; cursor: pointer; z-index: 10;
+}
+.btn-som:hover { filter: brightness(1.2); }
+/* durante a corrida o canto esquerdo é do HUD, então o botão vai para o meio */
+#hud:not(.escondido) ~ .btn-som { left: 50%; transform: translateX(-50%); }
+
+#fade {
+  position: fixed; inset: 0; background: #fff8e1;
+  opacity: 0; pointer-events: none; transition: opacity 0.8s;
+}
+#fade.ativo { opacity: 1; }
+
+/* ---------- Celular ---------- */
+@media (max-width: 800px) {
+  #tela-selecao { justify-content: center; align-items: flex-end; }
+  .painel-selecao { padding: 16px; max-height: 72%; }
+  h1 { font-size: 22px; }
+  .hud-esq { width: 140px; padding: 8px; top: 8px; left: 8px; }
+  #hud-avatar { width: 56px; height: 56px; }
+  .hud-nome { font-size: 12px; }
+  .hud-curso { display: none; }
+  .vidas { font-size: 20px; }
+  .pontos { font-size: 24px; }
+  .hud-dir { width: 160px; padding: 8px; top: 8px; right: 8px; }
+  .hud-titulo { font-size: 12px; }
+  .barra span { font-size: 11px; }
+  #hud-lista li { font-size: 11px; padding: 4px 6px; }
+  .aviso { font-size: 18px; }
+}

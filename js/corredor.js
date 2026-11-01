@@ -1,0 +1,192 @@
+// O corredor da faculdade.
+// Truque do "corredor infinito": criamos só 8 pedaços (segmentos). Quando um pedaço
+// fica para trás do jogador, ele é levado para a frente da fila e reaproveitado.
+
+const LARGURA_CORREDOR = 8;
+const ALTURA_CORREDOR = 4.2;
+const TAM_SEGMENTO = 16;
+const NUM_SEGMENTOS = 8;
+
+class Corredor {
+  constructor(cena) {
+    this.cena = cena;
+    this.texturaPiso = this.criarTexturaPiso();
+    this.texturaArmario = this.criarTexturaArmario();
+    this.placas = {};
+    this.segmentos = [];
+    for (let i = 0; i < NUM_SEGMENTOS; i++) {
+      const seg = this.criarSegmento();
+      cena.add(seg);
+      this.segmentos.push(seg);
+    }
+    this.reiniciar();
+  }
+
+  reiniciar() {
+    this.proximaSala = 101;
+    this.segmentos.forEach((seg, i) => {
+      seg.position.z = TAM_SEGMENTO / 2 - i * TAM_SEGMENTO;
+      this.numerarSalas(seg);
+    });
+  }
+
+  // Chamado a cada quadro: recicla os segmentos que ficaram para trás.
+  atualizar(zJogador) {
+    for (const seg of this.segmentos) {
+      if (seg.position.z - TAM_SEGMENTO / 2 > zJogador + 10) {
+        seg.position.z -= NUM_SEGMENTOS * TAM_SEGMENTO;
+        this.numerarSalas(seg);
+      }
+    }
+  }
+
+  numerarSalas(seg) {
+    seg.userData.placaE.material.map = this.texturaPlaca(this.proximaSala);
+    seg.userData.placaD.material.map = this.texturaPlaca(this.proximaSala + 1);
+    this.proximaSala += 2;
+  }
+
+  texturaPlaca(numero) {
+    if (!this.placas[numero]) {
+      this.placas[numero] = criarTexturaTexto(String(numero), {
+        largura: 256, altura: 160, fundo: '#1e3a8a', cor: '#ffffff', tamanho: 110,
+      });
+    }
+    return this.placas[numero];
+  }
+
+  criarTexturaPiso() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#8b91e3';
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = '#9ba1ec';
+    ctx.fillRect(8, 8, 112, 112);
+    ctx.strokeStyle = '#c3c6f5';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(0, 0, 128, 128);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(4, 8);
+    return t;
+  }
+
+  // Uma imagem de UM armário; ela se repete 6 vezes ao longo da fileira.
+  criarTexturaArmario() {
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 512;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#2563eb';
+    ctx.fillRect(0, 0, 128, 512);
+    ctx.strokeStyle = '#1e3a8a';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, 120, 504);
+    ctx.fillStyle = '#1e40af';
+    for (let i = 0; i < 5; i++) ctx.fillRect(30, 50 + i * 16, 68, 7);
+    ctx.fillStyle = '#d1d5db';
+    ctx.fillRect(96, 230, 12, 50);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(6, 1);
+    return t;
+  }
+
+  criarSegmento() {
+    const seg = new THREE.Group();
+
+    const piso = new THREE.Mesh(
+      new THREE.PlaneGeometry(LARGURA_CORREDOR, TAM_SEGMENTO),
+      // Phong = material com brilho (o piso parece encerado e reflete a luz)
+      new THREE.MeshPhongMaterial({ map: this.texturaPiso, specular: 0x8888aa, shininess: 70 })
+    );
+    piso.rotation.x = -Math.PI / 2;
+    piso.receiveShadow = true;
+    seg.add(piso);
+
+    // Linhas tracejadas que separam as 3 faixas
+    for (const x of [-1, 1]) {
+      for (let k = 0; k < 4; k++) {
+        const traco = caixa(0.1, 0.02, 2.2, 0xffffff);
+        traco.position.set(x, 0.01, -6 + k * 4);
+        seg.add(traco);
+      }
+    }
+
+    const teto = new THREE.Mesh(
+      new THREE.PlaneGeometry(LARGURA_CORREDOR, TAM_SEGMENTO),
+      new THREE.MeshLambertMaterial({ color: 0xf4f1ea })
+    );
+    teto.rotation.x = Math.PI / 2;
+    teto.position.y = ALTURA_CORREDOR;
+    seg.add(teto);
+    for (const z of [-4, 4]) {
+      const luz = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 0.7), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      luz.position.set(0, ALTURA_CORREDOR - 0.03, z);
+      seg.add(luz);
+    }
+
+    this.criarLado(seg, -1);
+    this.criarLado(seg, 1);
+    return seg;
+  }
+
+  // Monta uma parede com armários, mural, porta numerada e planta.
+  // lado = -1 (esquerda) ou 1 (direita)
+  criarLado(seg, lado) {
+    const xParede = (lado * LARGURA_CORREDOR) / 2;
+    const dentro = -lado; // direção que aponta para o meio do corredor
+
+    const parede = caixa(0.2, ALTURA_CORREDOR, TAM_SEGMENTO, 0xf3ead8);
+    parede.position.set(xParede + lado * 0.1, ALTURA_CORREDOR / 2, 0);
+    const rodape = caixa(0.06, 0.25, TAM_SEGMENTO, 0x1e3a8a);
+    rodape.position.set(xParede + dentro * 0.03, 0.125, 0);
+    seg.add(parede, rodape);
+
+    const armarios = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 2.3, 6),
+      new THREE.MeshLambertMaterial({ map: this.texturaArmario })
+    );
+    armarios.position.set(xParede + dentro * 0.25, 1.15, -4);
+    seg.add(armarios);
+
+    // Mural de avisos com bilhetes coloridos
+    const mural = caixa(0.06, 1.0, 1.4, 0xc8915a);
+    mural.position.set(xParede + dentro * 0.03, 1.8, 0.6);
+    seg.add(mural);
+    const coresBilhete = [0xfde047, 0xf9a8d4, 0x86efac, 0xffffff];
+    coresBilhete.forEach((cor, i) => {
+      const bilhete = caixa(0.02, 0.25, 0.25, cor);
+      bilhete.position.set(xParede + dentro * 0.07, 1.6 + (i % 2) * 0.4, 0.2 + i * 0.27);
+      seg.add(bilhete);
+    });
+
+    // Porta da sala
+    const batente = caixa(0.12, 2.8, 1.6, 0x8b5a2b);
+    batente.position.set(xParede + dentro * 0.06, 1.4, 3);
+    const porta = caixa(0.1, 2.6, 1.3, 0xb7793e);
+    porta.position.set(xParede + dentro * 0.1, 1.3, 3);
+    const janela = caixa(0.02, 0.6, 0.4, 0xbfe3ff);
+    janela.position.set(xParede + dentro * 0.16, 1.9, 3);
+    const macaneta = caixa(0.06, 0.06, 0.2, 0xd1d5db);
+    macaneta.position.set(xParede + dentro * 0.17, 1.3, 3 - 0.45);
+    seg.add(batente, porta, janela, macaneta);
+
+    const placa = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.38), new THREE.MeshBasicMaterial());
+    placa.position.set(xParede + dentro * 0.02, 3.1, 3);
+    placa.rotation.y = dentro * (Math.PI / 2);
+    seg.add(placa);
+    seg.userData[lado < 0 ? 'placaE' : 'placaD'] = placa;
+
+    // Vaso com planta
+    const vaso = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.24, 0.6, 12), new THREE.MeshLambertMaterial({ color: 0x6b7280 }));
+    vaso.position.set(xParede + dentro * 0.5, 0.3, 6.3);
+    seg.add(vaso);
+    [[0, 0.95, 0, 0.4], [0.15, 1.3, 0.1, 0.3], [-0.15, 1.25, -0.1, 0.3]].forEach(([dx, y, dz, r]) => {
+      const folha = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), new THREE.MeshLambertMaterial({ color: 0x2f9e44 }));
+      folha.position.set(xParede + dentro * 0.5 + dx, y, 6.3 + dz);
+      seg.add(folha);
+    });
+  }
+}

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Futuro Administrador</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Aqui o Three.js desenha o mundo 3D -->
+  <canvas id="jogo"></canvas>
+
+  <!-- Tela 1: escolha do personagem -->
+  <div id="tela-selecao" class="tela">
+    <div class="painel painel-selecao">
+      <h1>🎓 Futuro Administrador</h1>
+      <p class="sub">Escolha seu personagem</p>
+      <div id="cards" class="cards"></div>
+      <label for="nome">Seu nome</label>
+      <input id="nome" maxlength="16" placeholder="Digite seu nome" autocomplete="off">
+      <p id="previa-nome" class="previa">Futuro Administrador ...</p>
+      <button id="btn-comecar" class="btn">Começar o curso ▶</button>
+      <p class="dica">← → trocar de faixa · Espaço pular · M som · no celular, deslize o dedo</p>
+    </div>
+  </div>
+
+  <!-- HUD: painéis durante a corrida -->
+  <div id="hud" class="escondido">
+    <div class="painel hud-esq">
+      <img id="hud-avatar" alt="">
+      <div id="hud-nome" class="hud-nome"></div>
+      <div class="hud-curso">CURSO DE ADMINISTRAÇÃO</div>
+      <div class="hud-rotulo">VIDAS</div>
+      <div id="hud-vidas" class="vidas"></div>
+      <div class="hud-rotulo">PONTOS</div>
+      <div id="hud-pontos" class="pontos">0</div>
+    </div>
+    <div class="painel hud-dir">
+      <div class="hud-titulo">🎓 Progresso acadêmico</div>
+      <div class="barra"><div id="hud-barra" class="barra-cheia"></div><span id="hud-progresso"></span></div>
+      <ul id="hud-lista"></ul>
+    </div>
+    <div id="aviso" class="aviso"></div>
+  </div>
+
+  <!-- Game over -->
+  <div id="tela-fim" class="tela escondido">
+    <div class="painel painel-msg">
+      <h2>😢 Você trancou o curso</h2>
+      <p id="fim-texto"></p>
+      <button id="btn-tentar" class="btn">Tentar de novo</button>
+      <button class="btn secundario btn-trocar">Trocar personagem</button>
+    </div>
+  </div>
+
+  <!-- Vitória -->
+  <div id="tela-vitoria" class="tela escondido">
+    <div class="painel painel-msg">
+      <h2>🎓 Diploma conquistado!</h2>
+      <p id="vitoria-texto"></p>
+      <button id="btn-denovo" class="btn">Jogar de novo</button>
+      <button class="btn secundario btn-trocar">Trocar personagem</button>
+    </div>
+  </div>
+
+  <div id="fade"></div>
+  <button id="btn-som" class="btn-som" title="Ligar/desligar som (M)">🔊</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/sons.js"></script>
+  <script src="js/fotos.js"></script>
+  <script src="js/personagens.js"></script>
+  <script src="js/corredor.js"></script>
+  <script src="js/itens.js"></script>
+  <script src="js/hud.js"></script>
+  <script src="js/auditorio.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
