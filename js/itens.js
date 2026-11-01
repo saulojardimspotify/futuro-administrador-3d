@@ -239,12 +239,23 @@ function criarObstaculo(tipo) {
     const som = caixa(0.95, 1.4, 0.7, 0x111827);
     som.position.y = 0.7;
     g.add(som);
+    g.userData.altoFalantes = [];
     for (const [y, r] of [[1.0, 0.24], [0.45, 0.3]]) {
       const altoFalante = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.06, 20), new THREE.MeshLambertMaterial({ color: 0x4b5563 }));
       altoFalante.rotation.x = Math.PI / 2;
       altoFalante.position.set(0, y, 0.36);
       g.add(altoFalante);
+      g.userData.altoFalantes.push(altoFalante);
     }
+    // Dois bonecos dançando, um de cada lado da caixa de som
+    g.userData.dancarinos = [-0.78, 0.78].map((x) => {
+      const base = PERSONAGENS[Math.floor(Math.random() * PERSONAGENS.length)];
+      const pessoa = criarPersonagem(Object.assign({}, base, { camisa: Math.floor(Math.random() * 0xffffff) }), { mochila: false });
+      pessoa.scale.setScalar(0.62);
+      pessoa.position.set(x, 0, 0.15);
+      g.add(pessoa);
+      return pessoa;
+    });
     const coresBalao = [0xec4899, 0xfacc15, 0x22d3ee];
     coresBalao.forEach((cor, i) => {
       const x = (i - 1) * 0.35;
@@ -366,6 +377,8 @@ class Itens {
         item.position.y = 1.35 + Math.sin(t * 3 + item.position.z) * 0.12;
       } else if (d.flutua) {
         item.position.y = 0.12 + Math.sin(t * 2 + item.position.z) * 0.1;
+      } else if (d.dancarinos) {
+        this.animarFesta(d, t);
       }
 
       const dz = Math.abs(item.position.z - jogo.z);
@@ -385,6 +398,22 @@ class Itens {
       if (item.position.z > jogo.z + 8) this.remover(item);
     }
     return eventos;
+  }
+
+  // Dança: pulinhos no ritmo, corpo balançando e braços para cima alternados.
+  animarFesta(d, t) {
+    d.dancarinos.forEach((p, i) => {
+      const f = t * 8 + i * Math.PI;
+      const membros = p.userData;
+      p.position.y = Math.abs(Math.sin(f)) * 0.12;
+      p.rotation.y = Math.PI + (i ? -0.4 : 0.4) + Math.sin(t * 3) * 0.3; // de frente para o jogador
+      membros.bracoE.rotation.x = Math.PI * (0.6 + 0.4 * Math.sin(f));
+      membros.bracoD.rotation.x = Math.PI * (0.6 - 0.4 * Math.sin(f));
+      membros.pernaE.rotation.x = Math.sin(f) * 0.3;
+      membros.pernaD.rotation.x = -Math.sin(f) * 0.3;
+    });
+    const pulso = 1 + Math.abs(Math.sin(t * 16)) * 0.12;
+    d.altoFalantes.forEach((a) => a.scale.set(pulso, 1, pulso));
   }
 
   remover(item) {
