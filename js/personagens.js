@@ -22,9 +22,9 @@ function criarPersonagem(def, opcoes = {}) {
   const criarPerna = (x) => {
     const perna = new THREE.Group();
     perna.position.set(x, 0.75, 0);
-    const coxa = caixa(0.24, 0.7, 0.26, def.calca);
+    const coxa = caixaArredondada(0.24, 0.7, 0.26, def.calca);
     coxa.position.y = -0.35;
-    const tenis = caixa(0.27, 0.12, 0.36, 0xffffff);
+    const tenis = caixaArredondada(0.27, 0.12, 0.36, 0xffffff);
     tenis.position.set(0, -0.69, -0.05);
     perna.add(coxa, tenis);
     boneco.add(perna);
@@ -33,7 +33,7 @@ function criarPersonagem(def, opcoes = {}) {
   const pernaE = criarPerna(-0.15);
   const pernaD = criarPerna(0.15);
 
-  const tronco = caixa(0.62, 0.7, 0.36, def.camisa);
+  const tronco = caixaArredondada(0.62, 0.7, 0.36, def.camisa);
   tronco.position.y = 1.1;
   boneco.add(tronco);
 
@@ -41,9 +41,9 @@ function criarPersonagem(def, opcoes = {}) {
   const criarBraco = (x) => {
     const braco = new THREE.Group();
     braco.position.set(x, 1.4, 0);
-    const manga = caixa(0.21, 0.3, 0.23, def.camisa);
+    const manga = caixaArredondada(0.21, 0.3, 0.23, def.camisa);
     manga.position.y = -0.13;
-    const mao = caixa(0.17, 0.4, 0.19, def.pele);
+    const mao = caixaArredondada(0.17, 0.4, 0.19, def.pele);
     mao.position.y = -0.46;
     braco.add(manga, mao);
     boneco.add(braco);
@@ -55,7 +55,7 @@ function criarPersonagem(def, opcoes = {}) {
   // Cabeça
   const cabeca = new THREE.Group();
   cabeca.position.y = 1.78;
-  cabeca.add(caixa(0.56, 0.56, 0.52, def.pele));
+  cabeca.add(caixaArredondada(0.56, 0.56, 0.52, def.pele));
   for (const x of [-0.12, 0.12]) {
     const olho = caixa(0.08, 0.1, 0.02, 0x111111);
     olho.position.set(x, 0.02, -0.27);
@@ -72,7 +72,7 @@ function criarPersonagem(def, opcoes = {}) {
 
   // Cabelo
   const pecaCabelo = (l, a, p, x, y, z) => {
-    const c = caixa(l, a, p, def.cabelo);
+    const c = caixaArredondada(l, a, p, def.cabelo);
     c.position.set(x, y, z);
     cabeca.add(c);
   };
@@ -92,7 +92,7 @@ function criarPersonagem(def, opcoes = {}) {
   boneco.add(cabeca);
 
   if (mochila) {
-    const m = caixa(0.5, 0.56, 0.22, 0x1d4ed8);
+    const m = caixaArredondada(0.5, 0.56, 0.22, 0x1d4ed8);
     m.position.set(0, 1.12, 0.29);
     boneco.add(m);
   }

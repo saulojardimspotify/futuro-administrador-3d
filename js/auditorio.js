@@ -54,13 +54,13 @@ function criarTulio() {
   const tulio = criarPersonagem(TULIO, { mochila: false });
   const cabeca = tulio.userData.cabeca;
   // o rosto pintado cobre os olhos e a boca simples do boneco
-  const rosto = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.45), new THREE.MeshLambertMaterial({ map: texturaRostoTulio() }));
-  rosto.position.set(0, -0.055, -0.285);
+  const rosto = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.38), new THREE.MeshLambertMaterial({ map: texturaRostoTulio() }));
+  rosto.position.set(0, -0.03, -0.285);
   rosto.rotation.y = Math.PI; // virado para a frente do boneco (-Z)
   cabeca.add(rosto);
   cabeca.add(criarCapelo());
   // beca fechada
-  const beca = caixa(0.72, 1.25, 0.42, 0x111827);
+  const beca = caixaArredondada(0.72, 1.25, 0.42, 0x111827);
   beca.position.y = 0.95;
   tulio.add(beca);
   return tulio;
@@ -95,7 +95,7 @@ class Auditorio {
 
     // Jogador, de beca e capelo, entrando pelo fundo
     this.jogador = criarPersonagem(def, { mochila: false });
-    const beca = caixa(0.72, 1.25, 0.42, 0x111827);
+    const beca = caixaArredondada(0.72, 1.25, 0.42, 0x111827);
     beca.position.y = 0.95;
     this.jogador.add(beca);
     this.jogador.userData.cabeca.add(criarCapelo());

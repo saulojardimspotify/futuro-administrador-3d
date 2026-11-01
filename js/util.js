@@ -53,6 +53,47 @@ function caixa(largura, altura, profundidade, cor) {
   );
 }
 
+// Caixa com cantos arredondados (para os bonecos ficarem menos "quadrados").
+// Truque: pegamos uma caixa dividida em pedacinhos e "empurramos" os pontos das
+// quinas para formar uma curva. A geometria de cada tamanho é criada uma vez só
+// e reaproveitada por todos os bonecos.
+const geometriasArredondadas = {};
+function geometriaArredondada(l, a, p) {
+  const chave = `${l}|${a}|${p}`;
+  if (geometriasArredondadas[chave]) return geometriasArredondadas[chave];
+
+  const raio = Math.min(l, a, p, 0.28) * 0.35;
+  const geo = new THREE.BoxGeometry(l, a, p, 6, 6, 6);
+  const pos = geo.attributes.position;
+  const normal = geo.attributes.normal;
+  const limite = new THREE.Vector3(l / 2 - raio, a / 2 - raio, p / 2 - raio);
+  const v = new THREE.Vector3();
+  const interno = new THREE.Vector3();
+  const n = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    interno.set(
+      Math.max(-limite.x, Math.min(limite.x, v.x)),
+      Math.max(-limite.y, Math.min(limite.y, v.y)),
+      Math.max(-limite.z, Math.min(limite.z, v.z))
+    );
+    n.subVectors(v, interno).normalize();
+    v.copy(interno).addScaledVector(n, raio);
+    pos.setXYZ(i, v.x, v.y, v.z);
+    normal.setXYZ(i, n.x, n.y, n.z);
+  }
+  geo.userData.compartilhado = true;
+  geometriasArredondadas[chave] = geo;
+  return geo;
+}
+
+function caixaArredondada(largura, altura, profundidade, cor) {
+  return new THREE.Mesh(
+    geometriaArredondada(largura, altura, profundidade),
+    new THREE.MeshLambertMaterial({ color: cor })
+  );
+}
+
 // Retorna um número de 0 a 1 indicando quanto de uma etapa [inicio, fim] já passou.
 function progresso(t, inicio, fim) {
   return Math.min(1, Math.max(0, (t - inicio) / (fim - inicio)));
@@ -67,7 +108,7 @@ function suave(k) {
 function descartar(objeto) {
   if (objeto.parent) objeto.parent.remove(objeto);
   objeto.traverse((o) => {
-    if (o.geometry) o.geometry.dispose();
+    if (o.geometry && !o.geometry.userData.compartilhado) o.geometry.dispose();
     if (o.material && !o.material.userData.compartilhado) o.material.dispose();
   });
 }
