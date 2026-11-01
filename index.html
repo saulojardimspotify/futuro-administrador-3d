@@ -5,16 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Futuro Administrador</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <!-- Aqui o Three.js desenha o mundo 3D -->
   <canvas id="jogo"></canvas>
 
+  <!-- Tela de abertura: foto da faculdade + logo -->
+  <div id="tela-capa" class="tela capa">
+    <div class="painel capa-conteudo">
+      <img src="img/logo-ise.png?v=15" class="capa-logo" alt="Logo ISECENSA">
+      <h1>Futuro Administrador</h1>
+      <p class="sub">Curso de Administração · ISECENSA</p>
+      <button id="btn-jogar" class="btn">Jogar ▶</button>
+    </div>
+  </div>
+
   <!-- Tela 1: escolha do personagem -->
   <div id="tela-selecao" class="tela">
     <div class="painel painel-selecao">
-      <h1>🎓 Futuro Administrador</h1>
+      <h1><img src="img/logo-ise.png?v=15" class="logo-mini" alt="Logo ISECENSA"> Futuro Administrador</h1>
       <p class="sub">Escolha seu personagem</p>
       <div id="cards" class="cards"></div>
       <label for="nome">Seu nome</label>
@@ -70,15 +80,15 @@
   <button id="btn-som" class="btn-som" title="Ligar/desligar som (M)">🔊</button>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="js/util.js?v=14"></script>
-  <script src="js/sons.js?v=14"></script>
-  <script src="js/fotos.js?v=14"></script>
-  <script src="js/personagens.js?v=14"></script>
-  <script src="js/corredor.js?v=14"></script>
-  <script src="js/itens.js?v=14"></script>
-  <script src="js/hud.js?v=14"></script>
-  <script src="js/ranking.js?v=14"></script>
-  <script src="js/auditorio.js?v=14"></script>
-  <script src="js/main.js?v=14"></script>
+  <script src="js/util.js?v=15"></script>
+  <script src="js/sons.js?v=15"></script>
+  <script src="js/fotos.js?v=15"></script>
+  <script src="js/personagens.js?v=15"></script>
+  <script src="js/corredor.js?v=15"></script>
+  <script src="js/itens.js?v=15"></script>
+  <script src="js/hud.js?v=15"></script>
+  <script src="js/ranking.js?v=15"></script>
+  <script src="js/auditorio.js?v=15"></script>
+  <script src="js/main.js?v=15"></script>
 </body>
 </html>

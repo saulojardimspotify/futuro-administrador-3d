@@ -29,6 +29,22 @@ input { -webkit-user-select: text; user-select: text; }
   justify-content: center;
   padding: 16px;
 }
+/* Tela de abertura: foto da faculdade cobrindo tudo, painel embaixo (sobre o gramado) */
+.capa {
+  z-index: 20;
+  align-items: flex-end;
+  background: #4aa3f0 url('img/faculdade.webp?v=15') center / cover no-repeat;
+}
+.capa-conteudo {
+  width: min(460px, 100%);
+  margin-bottom: 4vh;
+  padding: 18px 24px 22px;
+  text-align: center;
+}
+.capa-logo { width: 96px; height: auto; display: block; margin: 0 auto 8px; }
+.capa-conteudo h1 { font-size: 32px; }
+.logo-mini { height: 1.3em; width: auto; vertical-align: middle; margin-right: 4px; }
+
 #tela-selecao { justify-content: flex-end; }
 #tela-vitoria { align-items: flex-end; }
 .painel-selecao {

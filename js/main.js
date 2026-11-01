@@ -286,9 +286,19 @@ function alternarSom() {
   $('btn-som').blur();
 }
 
+function fecharCapa() {
+  $('tela-capa').classList.add('escondido');
+  Sons.iniciar(); // aproveita o toque para já liberar os áudios no celular
+}
+
 function configurarControles() {
   $('btn-som').onclick = alternarSom;
+  $('btn-jogar').onclick = fecharCapa;
   addEventListener('keydown', (e) => {
+    if (!$('tela-capa').classList.contains('escondido')) {
+      if (e.key === 'Enter') fecharCapa();
+      return;
+    }
     if (tela === 'selecao' && e.key === 'Enter') return comecarPartida();
     if ((e.key === 'm' || e.key === 'M') && document.activeElement !== $('nome')) return alternarSom();
     if (tela !== 'jogando' || jogo.travado) return;
