@@ -54,7 +54,7 @@ imagemFotos.src = FOTO_PROFESSORES;
 const OBSTACULOS = {
   reprovacao: { nome: 'Reprovação', alto: true },
   festa: { nome: 'Festa', alto: true },
-  bebida: { nome: 'Bebida', alto: false, altura: 0.65 },
+  bebida: { nome: 'Bebida', alto: false, altura: 0.75 },
 };
 
 function retanguloArredondado(ctx, x, y, l, a, r) {
@@ -148,27 +148,93 @@ function criarLivro(d) {
 // As texturas das placas são criadas uma vez só e reaproveitadas.
 let texturaReprovado = null;
 let texturaFesta = null;
+let texturaBebida = null;
+
+// Atalho para cilindros (garrafas, latas, cabo da foice...)
+function cilindro(raioTopo, raioBase, altura, cor, lados = 12) {
+  return new THREE.Mesh(
+    new THREE.CylinderGeometry(raioTopo, raioBase, altura, lados),
+    new THREE.MeshLambertMaterial({ color: cor })
+  );
+}
+
+// Anjo da Morte segurando a foice e a placa "REPROVAÇÃO". A frente dele aponta para +Z (para o jogador).
+function criarAnjoDaMorte() {
+  const g = new THREE.Group();
+  const corManto = 0x1c1c22;
+
+  const manto = cilindro(0.32, 0.78, 1.9, corManto, 10);
+  manto.position.y = 0.95;
+  g.add(manto);
+  // barra rasgada do manto
+  for (let i = 0; i < 10; i++) {
+    const ang = (i / 10) * Math.PI * 2;
+    const tira = caixa(0.22, 0.25 + (i % 3) * 0.08, 0.06, corManto);
+    tira.position.set(Math.sin(ang) * 0.74, 0.08, Math.cos(ang) * 0.74);
+    tira.rotation.y = ang;
+    g.add(tira);
+  }
+
+  // Capuz com rosto escuro e olhos vermelhos
+  const capuz = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 12), new THREE.MeshLambertMaterial({ color: 0x15151a }));
+  capuz.position.y = 2.05;
+  capuz.scale.set(1, 1.15, 1);
+  const rosto = new THREE.Mesh(new THREE.CircleGeometry(0.22, 16), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+  rosto.position.set(0, 2.0, 0.33);
+  g.add(capuz, rosto);
+  for (const x of [-0.08, 0.08]) {
+    const olho = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff2a2a }));
+    olho.position.set(x, 2.04, 0.36);
+    g.add(olho);
+  }
+
+  // Braços (mangas largas) e mãos de esqueleto
+  const braco = (lado) => {
+    const manga = cilindro(0.1, 0.2, 0.75, corManto, 8);
+    manga.position.set(lado * 0.48, 1.45, 0.15);
+    manga.rotation.z = lado * 0.7;
+    manga.rotation.x = 0.5;
+    const mao = caixa(0.12, 0.16, 0.1, 0xd6d3d1);
+    mao.position.set(lado * 0.72, 1.25, 0.38);
+    g.add(manga, mao);
+  };
+  braco(-1);
+  braco(1);
+
+  // Foice na mão esquerda (do ponto de vista do jogador)
+  const cabo = cilindro(0.03, 0.03, 2.8, 0x8b6b3d, 8);
+  cabo.position.set(-0.75, 1.4, 0.38);
+  cabo.rotation.z = 0.06;
+  const lamina = new THREE.Mesh(
+    new THREE.TorusGeometry(0.6, 0.045, 6, 18, Math.PI * 0.55),
+    new THREE.MeshLambertMaterial({ color: 0x9ca3af })
+  );
+  lamina.position.set(-0.2, 2.45, 0.38);
+  lamina.rotation.z = Math.PI * 0.42;
+  g.add(cabo, lamina);
+
+  // Placa "REPROVAÇÃO" na mão direita
+  const placa = caixa(1.3, 0.62, 0.05, 0xffffff);
+  placa.position.set(0.55, 1.15, 0.5);
+  placa.rotation.z = -0.08;
+  const texto = new THREE.Mesh(new THREE.PlaneGeometry(1.26, 0.58), new THREE.MeshBasicMaterial({ map: texturaReprovado }));
+  texto.position.set(0.55, 1.15, 0.53);
+  texto.rotation.z = -0.08;
+  g.add(placa, texto);
+
+  g.userData.flutua = true; // sobe e desce devagar
+  return g;
+}
 
 function criarObstaculo(tipo) {
   if (!texturaReprovado) {
-    texturaReprovado = criarTexturaTexto(['F', 'REPROVADO'], { largura: 384, altura: 280, cor: '#dc2626', borda: '#dc2626', tamanho: 120 });
+    texturaReprovado = criarTexturaTexto('REPROVAÇÃO', { largura: 512, altura: 230, cor: '#dc2626', borda: '#dc2626', tamanho: 110 });
     texturaFesta = criarTexturaTexto('FESTA!', { largura: 256, altura: 90, fundo: '#111827', cor: '#f0abfc' });
+    texturaBebida = criarTexturaTexto('BEBIDA', { largura: 256, altura: 80, fundo: '#fef3c7', cor: '#92400e' });
   }
   const g = new THREE.Group();
   if (tipo === 'reprovacao') {
-    for (const x of [-0.55, 0.55]) {
-      const poste = caixa(0.08, 1.4, 0.08, 0x6b7280);
-      poste.position.set(x, 0.7, 0);
-      g.add(poste);
-    }
-    const placa = caixa(1.5, 1.1, 0.08, 0xffffff);
-    placa.position.y = 1.5;
-    const texto = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.44, 1.04),
-      new THREE.MeshBasicMaterial({ map: texturaReprovado })
-    );
-    texto.position.set(0, 1.5, 0.045);
-    g.add(placa, texto);
+    return criarAnjoDaMorte();
   } else if (tipo === 'festa') {
     const som = caixa(0.95, 1.4, 0.7, 0x111827);
     som.position.y = 0.7;
@@ -195,21 +261,42 @@ function criarObstaculo(tipo) {
     placa.position.set(0, 1.28, 0.36);
     g.add(placa);
   } else {
-    // bebida: engradado com garrafas e copos (baixo, dá para pular)
-    const engradado = caixa(1.3, 0.3, 0.6, 0xf59e0b);
+    // bebida: engradado de madeira com garrafas de cerveja, latinhas e copos de festa (baixo, dá para pular)
+    const engradado = caixa(1.3, 0.3, 0.6, 0xa16207);
     engradado.position.y = 0.15;
-    g.add(engradado);
+    const rotulo = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.2), new THREE.MeshBasicMaterial({ map: texturaBebida }));
+    rotulo.position.set(0, 0.15, 0.31);
+    g.add(engradado, rotulo);
     for (let i = 0; i < 4; i++) {
-      const garrafa = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.26, 10), new THREE.MeshLambertMaterial({ color: 0x166534 }));
-      garrafa.position.set(-0.45 + i * 0.3, 0.43, 0);
-      const gargalo = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.12, 8), new THREE.MeshLambertMaterial({ color: 0x166534 }));
-      gargalo.position.set(-0.45 + i * 0.3, 0.62, 0);
-      g.add(garrafa, gargalo);
+      const x = -0.45 + i * 0.3;
+      const corpo = cilindro(0.09, 0.09, 0.3, 0x92400e); // vidro marrom
+      corpo.position.set(x, 0.45, 0);
+      const etiqueta = cilindro(0.093, 0.093, 0.11, 0xfefce8);
+      etiqueta.position.set(x, 0.45, 0);
+      const ombro = cilindro(0.035, 0.09, 0.08, 0x92400e);
+      ombro.position.set(x, 0.64, 0);
+      const gargalo = cilindro(0.035, 0.035, 0.12, 0x92400e, 8);
+      gargalo.position.set(x, 0.74, 0);
+      const tampinha = cilindro(0.045, 0.045, 0.03, 0xeab308, 8);
+      tampinha.position.set(x, 0.81, 0);
+      g.add(corpo, etiqueta, ombro, gargalo, tampinha);
     }
-    for (const x of [-0.75, 0.75]) {
-      const copo = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.09, 0.3, 12), new THREE.MeshLambertMaterial({ color: 0xdc2626 }));
-      copo.position.set(x, 0.15, 0.35);
-      g.add(copo);
+    // latinhas
+    [[-0.55, 0xdc2626], [0.55, 0xd1d5db]].forEach(([x, cor]) => {
+      const lata = cilindro(0.08, 0.08, 0.22, cor);
+      lata.position.set(x, 0.11, 0.45);
+      const topo = cilindro(0.075, 0.08, 0.02, 0xe5e7eb);
+      topo.position.set(x, 0.23, 0.45);
+      g.add(lata, topo);
+    });
+    // copos vermelhos com espuma
+    for (const x of [-0.8, 0.8]) {
+      const copo = cilindro(0.14, 0.1, 0.32, 0xdc2626);
+      copo.position.set(x, 0.16, 0.3);
+      const espuma = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), new THREE.MeshLambertMaterial({ color: 0xfffbeb }));
+      espuma.position.set(x, 0.33, 0.3);
+      espuma.scale.y = 0.5;
+      g.add(copo, espuma);
     }
   }
   return g;
@@ -277,6 +364,8 @@ class Itens {
       if (d.tipo === 'livro') {
         item.rotation.y = Math.sin(t * 2 + item.position.z) * 0.15;
         item.position.y = 1.35 + Math.sin(t * 3 + item.position.z) * 0.12;
+      } else if (d.flutua) {
+        item.position.y = 0.12 + Math.sin(t * 2 + item.position.z) * 0.1;
       }
 
       const dz = Math.abs(item.position.z - jogo.z);
