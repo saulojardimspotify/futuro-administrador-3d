@@ -28,13 +28,17 @@ function ajustarQualidade(dtReal) {
   if (tela !== 'jogando' || jogo.tempo < 3) return; // ignora os primeiros segundos (carregando)
   qualidade.quadros++;
   qualidade.tempo += dtReal;
-  if (qualidade.tempo < 2) return;
+  if (qualidade.tempo < 1.5) return;
   const fps = qualidade.quadros / qualidade.tempo;
   qualidade.quadros = qualidade.tempo = 0;
-  if (fps < 45 && qualidade.atual > 1) {
-    qualidade.atual = Math.max(1, qualidade.atual - 0.25);
+  if (fps >= 50) return;
+  // 1º) baixa a resolução aos poucos; 2º) se ainda estiver lento, desliga as sombras
+  if (qualidade.atual > 0.75) {
+    qualidade.atual = Math.max(0.75, qualidade.atual - 0.25);
     renderizador.setPixelRatio(qualidade.atual);
     aoRedimensionar();
+  } else if (sol.castShadow) {
+    sol.castShadow = false;
   }
 }
 
@@ -42,13 +46,13 @@ function iniciar() {
   // No celular: sem suavização de bordas e menos pixels por ponto = bem mais rápido.
   // No computador: desenha em 1,5x a resolução da tela e reduz (supersampling) = bordas lisas.
   renderizador = new THREE.WebGLRenderer({ canvas: $('jogo'), antialias: !CELULAR, powerPreference: 'high-performance' });
-  qualidade.maxima = CELULAR ? Math.min(devicePixelRatio, 1.5) : Math.min(devicePixelRatio * 1.5, 2.5);
+  qualidade.maxima = CELULAR ? Math.min(devicePixelRatio, 1.25) : Math.min(devicePixelRatio * 1.25, 2);
   qualidade.atual = qualidade.maxima;
   renderizador.setPixelRatio(qualidade.atual);
   renderizador.setSize(innerWidth, innerHeight, false);
   // Sombras suaves
   renderizador.shadowMap.enabled = true;
-  renderizador.shadowMap.type = CELULAR ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+  renderizador.shadowMap.type = THREE.PCFShadowMap; // sombra "suave" pesa bem mais e quase não se nota
 
   cena = new THREE.Scene();
   cena.background = new THREE.Color(0xe6e1f0);
@@ -60,7 +64,7 @@ function iniciar() {
   sol = new THREE.DirectionalLight(0xfff1dc, 0.75);
   sol.position.set(3, 10, 6);
   sol.castShadow = true;
-  sol.shadow.mapSize.setScalar(CELULAR ? 512 : 2048);
+  sol.shadow.mapSize.setScalar(CELULAR ? 512 : 1024);
   Object.assign(sol.shadow.camera, { left: -8, right: 8, top: 22, bottom: -22, near: 1, far: 40 });
   sol.shadow.bias = -0.0008;
   cena.add(sol, sol.target);
@@ -203,6 +207,7 @@ async function comecarPartida(numFase = 1) {
       if (Modelos.usarFigurantes) {
         mostrarCarregando('Carregando colegas...');
         await Modelos.preparar(fase === 2 ? [...FIGURANTES, 'chefe'] : FIGURANTES);
+        Modelos.aquecer(renderizador, cena, camera); // evita o "soluço" quando o 1º figurante aparece
         if (fase === 1) Modelos.preparar(['tulio']); // para a formatura (em segundo plano)
       }
     } catch (erro) {

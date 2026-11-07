@@ -134,7 +134,10 @@ class Auditorio {
     this.criarConfete();
     // tudo faz e recebe sombra (menos o confete)
     cena.traverse((o) => {
-      if (o.isMesh && !this.confete.includes(o)) o.castShadow = o.receiveShadow = true;
+      if (o.isMesh && !this.confete.includes(o)) {
+        o.receiveShadow = true;
+        o.castShadow = !o.isSkinnedMesh; // bonecos realistas sem sombra (pesam demais)
+      }
     });
     // aplausos ao entrar no auditório; o áudio final já fica carregado
     Sons.tocarArquivo('applause', 0.9);

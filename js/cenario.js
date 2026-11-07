@@ -70,7 +70,9 @@ const Cenario = {
   },
 
   async carregarMoveis() {
-    const nomes = ['planta2', 'banco', 'extintor', 'relogio', 'mesa-escritorio', 'cadeira-escritorio', 'gaveteiro', 'luminaria'];
+    // Só móveis leves. A planta (70 mil triângulos!), a luminária e o armário de gavetas
+    // deixavam o jogo travando; no lugar deles ficam as versões simples.
+    const nomes = ['banco', 'extintor', 'relogio', 'mesa-escritorio', 'cadeira-escritorio'];
     const loader = new THREE.GLTFLoader();
     const lista = await Promise.all(nomes.map((n) =>
       loader.loadAsync(`modelos/glb/movel-${n}.glb?v=${VERSAO_CENARIO}`).catch(() => null)));
@@ -79,7 +81,9 @@ const Cenario = {
       if (!gltf) return;
       gltf.scene.traverse((o) => {
         if (!o.isMesh) return;
-        o.castShadow = o.receiveShadow = true;
+        // móveis recebem sombra, mas não fazem sombra (economiza: a sombra redesenha tudo)
+        o.castShadow = false;
+        o.receiveShadow = true;
         linearizarTexturas(o.material);
       });
       moveis[nomes[i]] = gltf.scene;
@@ -98,30 +102,24 @@ const Cenario = {
   },
 
   mobiliarFaculdade(seg, moveis) {
-    this.esconder(seg, ['planta']);
     for (const lado of [-1, 1]) {
       const deFrente = -lado * (Math.PI / 2); // virado para o meio do corredor
-      this.colocar(seg, moveis, 'planta2', lado, 0.5, 0, 6.3, 0);
       this.colocar(seg, moveis, 'banco', lado, 0.32, 0, 0.6, deFrente);
-      this.colocar(seg, moveis, 'extintor', lado, 0.22, 0, 4.7, deFrente);
+      if (lado > 0) this.colocar(seg, moveis, 'extintor', lado, 0.22, 0, 4.7, deFrente); // um por trecho basta
       this.colocar(seg, moveis, 'relogio', lado, 0.04, 2.9, -4, deFrente);
     }
-    this.colocarLuminarias(seg, moveis, [-4, 4]);
   },
 
   mobiliarEmpresa(seg, moveis) {
-    this.esconder(seg, ['mesaBaia', 'cadeira', 'mesaSala']);
+    this.esconder(seg, ['mesaBaia', 'cadeira']);
     for (const lado of [-1, 1]) {
       const deFrente = -lado * (Math.PI / 2);
       this.colocar(seg, moveis, 'mesa-escritorio', lado, 0.5, 0, 2.5, deFrente);
       // cadeira encaixada embaixo da mesa (mais longe das faixas, para não parecer obstáculo)
       const cadeira = this.colocar(seg, moveis, 'cadeira-escritorio', lado, 0.8, 0, 2.5, -deFrente);
       if (cadeira) cadeira.scale.setScalar(0.82);
-      this.colocar(seg, moveis, 'gaveteiro', lado, 0.3, 0, -4, deFrente);
-      this.colocar(seg, moveis, 'planta2', lado, 0.45, 0, 5.0, 0);
       this.colocar(seg, moveis, 'relogio', lado, 0.04, 2.6, 0.2, deFrente);
     }
-    this.colocarLuminarias(seg, moveis, [-6, -2, 2, 6]);
   },
 
   // Luminária fluorescente de verdade no lugar dos painéis brancos do teto
@@ -129,8 +127,7 @@ const Cenario = {
     if (!moveis.luminaria) return;
     this.esconder(seg, ['luz']);
     for (const z of posicoes) {
-      const l = this.colocar(seg, moveis, 'luminaria', 0, 0, ALTURA_CORREDOR - 0.06, z, 0);
-      l.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+      this.colocar(seg, moveis, 'luminaria', 0, 0, ALTURA_CORREDOR - 0.06, z, 0);
     }
   },
 

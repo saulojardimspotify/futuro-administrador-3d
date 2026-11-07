@@ -70,11 +70,26 @@ const Modelos = {
     return Promise.all(tarefas).catch(() => {});
   },
 
+  // "Aquece" a placa de vídeo: desenha um figurante de cada tipo escondido, para o
+  // navegador preparar tudo antes. Sem isso, o jogo dá um "soluço" quando o primeiro aparece.
+  aquecer(renderizador, cena, camera) {
+    if (!this.clipsProntos) return;
+    const grupo = new THREE.Group();
+    for (const arquivo of Object.keys(this.prontos)) {
+      const real = this.criarJa(arquivo, 'parado');
+      if (real) grupo.add(real.grupo);
+    }
+    grupo.position.copy(camera.position);
+    cena.add(grupo);
+    renderizador.compile(cena, camera);
+    cena.remove(grupo);
+  },
+
   // Cria um figurante já tocando uma animação; devolve null se ainda não baixou
   criarJa(arquivo, animacao) {
     const gltf = this.prontos[arquivo || FIGURANTES[Math.floor(Math.random() * FIGURANTES.length)]];
     if (!gltf || !this.clipsProntos) return null;
-    const real = new BonecoReal(gltf, this.clipsProntos);
+    const real = new BonecoReal(gltf, this.clipsProntos, false);
     real.tocar(animacao, 0);
     real.acaoAtual.time = Math.random() * real.acaoAtual.getClip().duration; // cada um num ponto da animação
     return real;
@@ -112,7 +127,8 @@ function corrigirPesos(gltf) {
 }
 
 class BonecoReal {
-  constructor(gltf, clips) {
+  // sombra = false nos figurantes: a sombra obriga a desenhar o boneco duas vezes
+  constructor(gltf, clips, sombra = true) {
     // "grupo" é o que o jogo move; o modelo fica dentro dele, na escala e direção certas
     this.grupo = new THREE.Group();
     const modelo = (this.modelo = THREE.SkeletonUtils.clone(gltf.scene));
@@ -123,8 +139,16 @@ class BonecoReal {
     modelo.rotation.y = Math.PI; // o Mixamo olha para +Z; no jogo a frente é -Z
     modelo.traverse((o) => {
       if (o.isMesh) {
-        o.castShadow = true;
-        o.frustumCulled = false; // a animação mexe o corpo para fora da "caixa" original
+        o.castShadow = sombra;
+        // Só desenha o boneco quando ele está na tela. A "esfera" que o envolve é aumentada
+        // porque a animação mexe braços e pernas para fora da pose original.
+        const g = o.geometry;
+        if (!g.userData.esferaAumentada) {
+          g.computeBoundingSphere();
+          g.boundingSphere.radius *= 1.5;
+          g.userData.esferaAumentada = true;
+        }
+        o.frustumCulled = true;
       }
     });
     this.grupo.add(modelo);

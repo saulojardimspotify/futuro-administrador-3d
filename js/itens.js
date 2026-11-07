@@ -386,7 +386,8 @@ class Itens {
 
   adicionar(objeto, faixa, z, dados) {
     objeto.position.set(faixa * 2, 0, z);
-    if (dados.tipo !== 'livro') objeto.traverse((o) => (o.castShadow = true));
+    // sombra nos obstáculos simples; bonecos realistas sem sombra (pesam demais)
+    if (dados.tipo !== 'livro') objeto.traverse((o) => (o.castShadow = !o.isSkinnedMesh));
     objeto.userData = Object.assign(objeto.userData, dados, { faixa });
     this.cena.add(objeto);
     this.lista.push(objeto);
@@ -430,6 +431,10 @@ class Itens {
     const eventos = [];
     for (const item of [...this.lista]) {
       const d = item.userData;
+      // Longe demais (escondido na neblina): nem desenha nem anima. Economiza muito.
+      const longe = jogo.z - item.position.z > 70;
+      item.visible = !longe;
+      if (longe) continue;
       if (d.tipo === 'livro') {
         item.rotation.y = Math.sin(t * 2 + item.position.z) * 0.15;
         item.position.y = 1.35 + Math.sin(t * 3 + item.position.z) * 0.12;
