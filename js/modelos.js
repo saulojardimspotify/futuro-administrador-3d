@@ -220,6 +220,26 @@ class BonecoReal {
     osso.add(objeto);
   }
 
+  // Estende o braço direito na direção de um ponto (em coordenadas da cena).
+  // Gira o ombro para a mão apontar para o alvo, por cima da animação que está tocando.
+  // peso: 0 = braço como na animação, 1 = totalmente estendido para o alvo.
+  // Precisa ser chamado depois de atualizar(), a cada quadro.
+  mirarBraco(alvo, peso) {
+    if (peso <= 0) return;
+    const ombro = this.modelo.getObjectByName('RightArm');
+    const mao = this.modelo.getObjectByName('RightHand');
+    this.modelo.updateMatrixWorld(true);
+    const pOmbro = ombro.getWorldPosition(new THREE.Vector3());
+    const atual = mao.getWorldPosition(new THREE.Vector3()).sub(pOmbro).normalize();
+    const desejado = alvo.clone().sub(pOmbro).normalize();
+    // giro necessário (na cena), convertido para o espaço do osso "pai"
+    const giroCena = new THREE.Quaternion().setFromUnitVectors(atual, desejado);
+    const qPai = ombro.parent.getWorldQuaternion(new THREE.Quaternion());
+    const giroLocal = qPai.clone().invert().multiply(giroCena).multiply(qPai);
+    const final = giroLocal.multiply(ombro.quaternion.clone());
+    ombro.quaternion.slerp(final, peso);
+  }
+
   posicaoDoOsso(nomeOsso) {
     this.modelo.updateMatrixWorld(true);
     return this.modelo.getObjectByName(nomeOsso).getWorldPosition(new THREE.Vector3());

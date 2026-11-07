@@ -128,8 +128,14 @@ class Auditorio {
     const fita = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.08, 12), new THREE.MeshLambertMaterial({ color: 0xdc2626 }));
     this.diploma.add(rolo, fita);
     this.diploma.rotation.z = Math.PI / 2;
-    this.diploma.position.copy(this.maoDoTulio());
-    cena.add(this.diploma);
+    if (this.tulioReal && this.real) {
+      // o Túlio já começa com o diploma na mão (nada flutuando)
+      this.tulioReal.prenderNoOsso('RightHand', this.diploma, new THREE.Vector3(0, 0.1, 0.03));
+      this.diploma.rotation.z = Math.PI / 2;
+    } else {
+      this.diploma.position.copy(this.maoDoTulio());
+      cena.add(this.diploma);
+    }
 
     this.criarConfete();
     // tudo faz e recebe sombra (menos o confete)
@@ -288,6 +294,22 @@ class Auditorio {
     if (t >= 6.2 && t < 8.6) {
       // vira na diagonal, de costas para a câmera e de frente para o Túlio
       j.rotation.y = (-Math.PI / 4) * suave(progresso(t, 6.2, 6.7));
+    }
+    if (this.real && this.tulioReal && t >= 6.2 && t < 8.6) {
+      // Entrega de mão em mão: os dois estendem o braço até um ponto entre eles
+      // (um pouco abaixo dos ombros), o diploma troca de mão e os braços descem.
+      const encontro = this.real.posicaoDoOsso('RightArm')
+        .add(this.tulioReal.posicaoDoOsso('RightArm'))
+        .multiplyScalar(0.5);
+      encontro.y -= 0.05; // na altura do peito: dá para ver bem os braços estendidos
+      const braco = suave(progresso(t, 6.5, 7.0)) * (1 - suave(progresso(t, 7.4, 7.9)));
+      this.tulioReal.mirarBraco(encontro, braco);
+      this.real.mirarBraco(encontro, braco);
+      if (t >= 7.1 && this.diploma.parent !== this.real.modelo.getObjectByName('RightHand')) {
+        this.real.prenderNoOsso('RightHand', this.diploma, new THREE.Vector3(0, 0.1, 0.03));
+        this.diploma.rotation.z = Math.PI / 2;
+      }
+    } else if (t >= 6.2 && t < 8.6) {
       if (!this.real) jp.bracoD.rotation.x = 1.3 * progresso(t, 6.7, 7.0);
       if (!this.tulioReal) this.reitor.userData.bracoD.rotation.x = 1.3 * progresso(t, 6.4, 6.8);
       if (this.diploma.parent === this.cena) {
