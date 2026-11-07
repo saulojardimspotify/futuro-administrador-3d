@@ -85,8 +85,9 @@ function iniciar() {
 function montarSelecao() {
   PERSONAGENS.forEach((def, i) => {
     // com os modelos realistas: fotos prontas; sem eles: "fotos" dos bonecos de blocos
-    def.retratoRosto = Modelos.disponivel ? `img/personagens/${def.arquivo}-rosto.jpg` : gerarRetrato(def, false);
-    const corpo = Modelos.disponivel ? `img/personagens/${def.arquivo}-corpo.jpg` : gerarRetrato(def, true);
+    // "?v=2": fotos refeitas com a cabeça inteira (força o navegador a baixar as novas)
+    def.retratoRosto = Modelos.disponivel ? `img/personagens/${def.arquivo}-rosto.jpg?v=2` : gerarRetrato(def, false);
+    const corpo = Modelos.disponivel ? `img/personagens/${def.arquivo}-corpo.jpg?v=2` : gerarRetrato(def, true);
     const card = document.createElement('button');
     card.className = 'card';
     card.innerHTML = `<img src="${corpo}" alt="${def.descricao}"><span>${def.nome}</span>`;
