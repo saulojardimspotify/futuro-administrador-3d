@@ -204,3 +204,10 @@ input.erro { border-color: #ef4444; animation: tremer 0.3s; }
   .aviso { font-size: 18px; }
   #hud:not(.escondido) ~ .btn-som { top: auto; bottom: 16px; }
 }
+
+/* Aviso enquanto o boneco 3D baixa */
+.carregando {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 40;
+  padding: 16px 26px; border-radius: 14px; background: rgba(16, 28, 84, 0.95);
+  border: 2px solid #facc15; color: #facc15; font-weight: 900; font-size: 20px;
+}

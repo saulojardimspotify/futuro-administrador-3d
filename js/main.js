@@ -78,10 +78,12 @@ function iniciar() {
 
 function montarSelecao() {
   PERSONAGENS.forEach((def, i) => {
-    def.retratoRosto = gerarRetrato(def, false);
+    // com os modelos realistas: fotos prontas; sem eles: "fotos" dos bonecos de blocos
+    def.retratoRosto = Modelos.disponivel ? `img/personagens/${def.arquivo}-rosto.jpg` : gerarRetrato(def, false);
+    const corpo = Modelos.disponivel ? `img/personagens/${def.arquivo}-corpo.jpg` : gerarRetrato(def, true);
     const card = document.createElement('button');
     card.className = 'card';
-    card.innerHTML = `<img src="${gerarRetrato(def, true)}" alt="${def.descricao}"><span>${def.nome}</span>`;
+    card.innerHTML = `<img src="${corpo}" alt="${def.descricao}"><span>${def.nome}</span>`;
     card.onclick = () => escolher(i);
     $('cards').appendChild(card);
   });
@@ -107,6 +109,21 @@ function escolher(i) {
   previa = criarPersonagem(PERSONAGENS[i]);
   previa.traverse((o) => (o.castShadow = true));
   cena.add(previa);
+  // no computador, troca a prévia pelo boneco realista assim que ele terminar de baixar
+  if (Modelos.disponivel && !CELULAR) {
+    Modelos.criar(PERSONAGENS[i]).then((real) => {
+      if (escolhido !== i || tela !== 'selecao') return;
+      cena.remove(previa);
+      previa = real.grupo;
+      cena.add(previa);
+    }).catch(() => {});
+  }
+}
+
+// Aviso "Carregando personagem... 45%" enquanto o modelo 3D baixa
+function mostrarCarregando(texto) {
+  $('carregando').textContent = texto || '';
+  $('carregando').classList.toggle('escondido', !texto);
 }
 
 function voltarSelecao() {
@@ -145,25 +162,49 @@ function esconderTelas() {
 
 // ---------- Partida ----------
 
-function comecarPartida(numFase = 1) {
-  fase = numFase;
-  itens.fase = numFase;
+let carregandoPartida = false;
+
+async function comecarPartida(numFase = 1) {
+  if (carregandoPartida) return;
   const nome = $('nome').value.trim();
   if (!nome) {
     $('nome').classList.add('erro');
     $('nome').focus();
     return;
   }
+  fase = numFase;
+  itens.fase = numFase;
   nomeJogador = nome;
   $('nome').blur();
+  const def = PERSONAGENS[escolhido];
+
+  // Boneco realista (baixa só uma vez); se falhar, usa o boneco de blocos
+  let boneco = null;
+  if (Modelos.disponivel) {
+    carregandoPartida = true;
+    mostrarCarregando('Carregando personagem...');
+    try {
+      const real = await Modelos.criar(def, (e) => {
+        if (e.total) mostrarCarregando(`Carregando personagem... ${Math.round((e.loaded / e.total) * 100)}%`);
+      });
+      boneco = real.grupo;
+    } catch (erro) {
+      Modelos.disponivel = false;
+    }
+    carregandoPartida = false;
+    mostrarCarregando('');
+  }
+  if (!boneco) {
+    boneco = criarPersonagem(def);
+    boneco.scale.setScalar(0.85);
+  }
 
   if (previa) cena.remove(previa);
   previa = null;
   if (jogador) cena.remove(jogador);
-  const def = PERSONAGENS[escolhido];
-  jogador = criarPersonagem(def);
-  jogador.scale.setScalar(0.85);
+  jogador = boneco;
   jogador.rotation.set(0, 0, 0);
+  jogador.visible = true;
   jogador.traverse((o) => (o.castShadow = true));
   cena.add(jogador);
 
@@ -241,7 +282,19 @@ function atualizarJogo(dt) {
   jogador.position.set(jogo.x, jogo.y, jogo.z);
   jogador.rotation.z = (jogo.x - alvoX) * 0.08;
   jogador.rotation.x = 0;
-  if (jogo.abaixado > 0 && jogo.y === 0) poseAbaixado(jogador);
+  const real = jogador.userData.real;
+  if (real) {
+    // boneco realista: animações de verdade (deslizar, pular, correr no ritmo da velocidade)
+    if (jogo.abaixado > 0 && jogo.y === 0) {
+      real.tocar('deslizar', 0.1);
+      real.velocidade(1.6);
+    } else if (jogo.y > 0) real.tocar('pular', 0.1);
+    else {
+      real.tocar('correr', 0.12);
+      real.velocidade(jogo.vel / 12);
+    }
+    real.atualizar(dt);
+  } else if (jogo.abaixado > 0 && jogo.y === 0) poseAbaixado(jogador);
   else if (jogo.y > 0) poseSalto(jogador);
   else animarCorrida(jogador, jogo.tempo * jogo.vel * 0.9);
 
@@ -354,6 +407,7 @@ function irParaAuditorio() {
   setTimeout(() => {
     HUD.esconder();
     const def = PERSONAGENS[escolhido];
+    const montar = (real) => {
     auditorio = new Auditorio(def, () => {
       const titulo = def.mulher ? 'Administradora formada' : 'Administrador formado';
       $('vitoria-texto').innerHTML =
@@ -362,9 +416,13 @@ function irParaAuditorio() {
         Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: true, fase: 1 })
       );
       $('tela-vitoria').classList.remove('escondido');
-    });
+    }, real);
     tela = 'auditorio';
     $('fade').classList.remove('ativo');
+    };
+    // boneco realista na formatura (já está baixado, então é rápido); se falhar, usa o de blocos
+    if (jogador.userData.real) Modelos.criar(def).then(montar, () => montar(null));
+    else montar(null);
   }, 900);
 }
 
@@ -479,7 +537,8 @@ function laco() {
     const largo = innerWidth > 800;
     previa.position.set(largo ? -1.6 : 0, 0, -3);
     previa.rotation.y += dt * 0.8;
-    animarCorrida(previa, tempoTotal * 2, 0.15);
+    if (previa.userData.real) previa.userData.real.atualizar(dt);
+    else animarCorrida(previa, tempoTotal * 2, 0.15);
     camera.position.set(0, largo ? 1.7 : 2.4, 2.2);
     camera.lookAt(largo ? -0.4 : 0, largo ? 1.25 : 0.2, -3);
   } else if (tela === 'jogando') {
@@ -488,13 +547,20 @@ function laco() {
     jogador.rotation.x = Math.max(jogador.rotation.x - dt * 4, -Math.PI / 2);
     jogador.position.y = Math.max(jogador.position.y - dt * 3, 0.25);
   } else if (tela === 'promovido') {
-    // comemorando: pulinhos com os braços para cima
-    jogador.position.y = Math.abs(Math.sin(tempoTotal * 6)) * 0.4;
-    jogador.userData.bracoE.rotation.x = jogador.userData.bracoD.rotation.x = Math.PI;
+    // comemorando: animação de vitória (realista) ou pulinhos com os braços para cima (blocos)
+    if (jogador.userData.real) {
+      jogador.position.y = 0;
+      jogador.userData.real.tocar('comemorar', 0.3);
+      jogador.userData.real.atualizar(dt);
+    } else {
+      jogador.position.y = Math.abs(Math.sin(tempoTotal * 6)) * 0.4;
+      jogador.userData.bracoE.rotation.x = jogador.userData.bracoD.rotation.x = Math.PI;
+    }
   } else if (tela === 'transicao') {
     jogo.z -= 6 * dt;
     jogador.position.z = jogo.z;
-    animarCorrida(jogador, tempoTotal * 9);
+    if (jogador.userData.real) jogador.userData.real.atualizar(dt);
+    else animarCorrida(jogador, tempoTotal * 9);
     posicionarCamera(dt);
   } else if (auditorio) {
     auditorio.atualizar(dt);

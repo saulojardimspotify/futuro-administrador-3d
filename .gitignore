@@ -1,1 +1,5 @@
 .claude/
+
+# arquivos originais do Mixamo (pesados): so os .glb convertidos vao para o site
+modelos/personagens/
+modelos/anima*/

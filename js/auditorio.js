@@ -67,8 +67,10 @@ function criarTulio() {
 }
 
 class Auditorio {
-  constructor(def, aoTerminar) {
+  // real = boneco realista (BonecoReal) ou nada (aí usa o boneco de blocos)
+  constructor(def, aoTerminar, real) {
     this.aoTerminar = aoTerminar;
+    this.real = real || null;
     this.t = 0;
     this.terminou = false;
 
@@ -93,12 +95,18 @@ class Auditorio {
     this.reitor.rotation.y = (Math.PI * 3) / 4;
     cena.add(this.reitor);
 
-    // Jogador, de beca e capelo, entrando pelo fundo
-    this.jogador = criarPersonagem(def, { mochila: false });
-    const beca = caixaArredondada(0.72, 1.25, 0.42, 0x111827);
-    beca.position.y = 0.95;
-    this.jogador.add(beca);
-    this.jogador.userData.cabeca.add(criarCapelo());
+    // Jogador, de capelo (e beca, no boneco de blocos), entrando pelo fundo
+    if (this.real) {
+      this.jogador = this.real.grupo;
+      this.real.prenderNoOsso('Head', criarCapelo(), new THREE.Vector3(0, 0.2, 0.02), 0.42);
+    } else {
+      this.jogador = criarPersonagem(def, { mochila: false });
+      const beca = caixaArredondada(0.72, 1.25, 0.42, 0x111827);
+      beca.position.y = 0.95;
+      this.jogador.add(beca);
+      this.jogador.userData.cabeca.add(criarCapelo());
+    }
+    this.jogador.rotation.set(0, 0, 0);
     this.jogador.position.set(0, 0, 9);
     cena.add(this.jogador);
 
@@ -235,27 +243,40 @@ class Auditorio {
         j.position.y = 1;
         j.position.z = -9.3 + (-11.5 + 9.3) * progresso(t, 5.2, 6.2);
       }
-      animarCorrida(j, t * 7, 0.5);
+      if (this.real) {
+        this.real.tocar('correr');
+        this.real.velocidade(0.55); // corrida bem leve, quase andando
+      } else animarCorrida(j, t * 7, 0.5);
+    } else if (this.real) {
+      if (t < 8.6) this.real.tocar('parado');
     } else {
       animarCorrida(j, 0, 0);
     }
+    if (this.real) this.real.atualizar(dt);
 
     // 4) Vira para o reitor e recebe o diploma (6,2 a 8 s)
     if (t >= 6.2 && t < 8.6) {
       // vira na diagonal, de costas para a câmera e de frente para o Túlio
       j.rotation.y = (-Math.PI / 4) * suave(progresso(t, 6.2, 6.7));
-      jp.bracoD.rotation.x = 1.3 * progresso(t, 6.7, 7.0);
+      if (!this.real) jp.bracoD.rotation.x = 1.3 * progresso(t, 6.7, 7.0);
       this.reitor.userData.bracoD.rotation.x = 1.3 * progresso(t, 6.4, 6.8);
       if (this.diploma.parent === this.cena) {
         j.updateMatrixWorld(true);
-        const mao = jp.bracoD.localToWorld(new THREE.Vector3(0, -0.62, 0));
+        const mao = this.real
+          ? this.real.posicaoDoOsso('RightHand')
+          : jp.bracoD.localToWorld(new THREE.Vector3(0, -0.62, 0));
         const k = suave(progresso(t, 6.8, 8.0));
         this.diploma.position.lerpVectors(this.maoDoTulio(), mao, k);
         if (k >= 1) {
           // o diploma passa a "morar" na mão do jogador
-          jp.bracoD.add(this.diploma);
-          this.diploma.position.set(0, -0.62, -0.05);
-          this.diploma.rotation.set(0, 0, Math.PI / 2);
+          if (this.real) {
+            this.real.prenderNoOsso('RightHand', this.diploma, new THREE.Vector3(0, 0.08, 0.02));
+            this.diploma.rotation.z = Math.PI / 2;
+          } else {
+            jp.bracoD.add(this.diploma);
+            this.diploma.position.set(0, -0.62, -0.05);
+            this.diploma.rotation.set(0, 0, Math.PI / 2);
+          }
           this.reitor.userData.bracoD.rotation.x = 0;
         }
       }
@@ -269,10 +290,14 @@ class Auditorio {
         Sons.tocarArquivo('final2', 1);
       }
       j.rotation.y = -Math.PI / 4 - ((Math.PI * 3) / 4) * suave(progresso(t, 8.6, 9.2));
-      const braco = Math.PI * suave(progresso(t, 9.0, 9.5));
-      jp.bracoD.rotation.x = Math.max(1.3, braco);
-      jp.bracoE.rotation.x = braco;
-      j.position.y = 1 + Math.max(0, Math.sin((t - 9.5) * 6)) * 0.25 * (t > 9.5 ? 1 : 0);
+      if (this.real) {
+        this.real.tocar('comemorar', 0.3); // animação de vitória de verdade
+      } else {
+        const braco = Math.PI * suave(progresso(t, 9.0, 9.5));
+        jp.bracoD.rotation.x = Math.max(1.3, braco);
+        jp.bracoE.rotation.x = braco;
+        j.position.y = 1 + Math.max(0, Math.sin((t - 9.5) * 6)) * 0.25 * (t > 9.5 ? 1 : 0);
+      }
       for (const p of this.confete) p.visible = true;
     }
 
