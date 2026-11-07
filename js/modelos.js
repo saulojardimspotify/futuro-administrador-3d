@@ -34,9 +34,39 @@ const Modelos = {
       this.cache[def.arquivo].catch(() => delete this.cache[def.arquivo]);
     }
     const [gltf, clips] = await Promise.all([this.cache[def.arquivo], this.carregarAnimacoes()]);
+    corrigirPesos(gltf);
     return new BonecoReal(gltf, clips);
   },
 };
+
+// Cada ponto do corpo segue até 4 ossos, com "pesos" que precisam somar 255.
+// Na conversão, alguns pontos ficaram com soma errada e eram puxados para longe
+// (aparecia uma linha preta acima do boneco). Aqui os pesos são acertados.
+function corrigirPesos(gltf) {
+  if (gltf.pesosCorrigidos) return;
+  gltf.pesosCorrigidos = true;
+  gltf.scene.traverse((o) => {
+    const pesos = o.isSkinnedMesh && o.geometry.attributes.skinWeight;
+    if (!pesos || !(pesos.array instanceof Uint8Array)) return;
+    const a = pesos.array;
+    for (let i = 0; i < a.length; i += 4) {
+      const soma = a[i] + a[i + 1] + a[i + 2] + a[i + 3];
+      if (soma === 255) continue;
+      const outros = a[i + 1] + a[i + 2] + a[i + 3];
+      if (outros <= 255) a[i] = 255 - outros; // o primeiro peso "deu a volta" (ex.: -1 virou 255)
+      else {
+        const k = 255 / soma;
+        let maior = i;
+        for (let j = i; j < i + 4; j++) {
+          a[j] = Math.round(a[j] * k);
+          if (a[j] > a[maior]) maior = j;
+        }
+        a[maior] += 255 - (a[i] + a[i + 1] + a[i + 2] + a[i + 3]); // sobra do arredondamento
+      }
+    }
+    pesos.needsUpdate = true;
+  });
+}
 
 class BonecoReal {
   constructor(gltf, clips) {
