@@ -84,7 +84,7 @@ function criarTexturaRelogio() {
 
 // Boneco "de frente" para o jogador (os bonecos olham para -Z; giramos 180°)
 function bonecoDeFrente(def, escala) {
-  const p = criarPersonagem(def, { mochila: false });
+  const p = criarPersonagem(def, { mochila: false, rosto: false }); // o chefe tem rosto bravo próprio
   p.scale.setScalar(escala);
   p.rotation.y = Math.PI;
   return p;
@@ -94,8 +94,8 @@ function criarChefe() {
   const t = prepararTexturasFase2();
   const g = new THREE.Group();
   const chefe = bonecoDeFrente({ pele: 0xe8b892, cabelo: 0x4b5563, longo: false, camisa: 0x1f2937, calca: 0x111827 }, 1);
-  const rosto = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.38), new THREE.MeshLambertMaterial({ map: rostoBravo() }));
-  rosto.position.set(0, -0.03, -0.285);
+  const rosto = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.42), new THREE.MeshLambertMaterial({ map: rostoBravo() }));
+  rosto.position.set(0, -0.04, -0.295);
   rosto.rotation.y = Math.PI;
   chefe.userData.cabeca.add(rosto);
   const gravata = caixa(0.1, 0.45, 0.02, 0xdc2626);

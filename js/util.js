@@ -95,7 +95,8 @@ function geometriaArredondada(l, a, p) {
 function caixaArredondada(largura, altura, profundidade, cor) {
   return new THREE.Mesh(
     geometriaArredondada(largura, altura, profundidade),
-    new THREE.MeshLambertMaterial({ color: cor })
+    // Phong: um leve brilho, como plástico/tecido, dá mais volume que o material fosco
+    new THREE.MeshPhongMaterial({ color: cor, shininess: 18, specular: 0x1a1a1a })
   );
 }
 

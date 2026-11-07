@@ -104,7 +104,7 @@ class Corredor {
       }
     }
 
-    const teto = new THREE.Mesh(new THREE.PlaneGeometry(LARGURA_CORREDOR, TAM_SEGMENTO), new THREE.MeshLambertMaterial({ color: 0xf8fafc }));
+    const teto = new THREE.Mesh(new THREE.PlaneGeometry(LARGURA_CORREDOR, TAM_SEGMENTO), new THREE.MeshLambertMaterial({ map: this.texturaTeto(), color: 0xf8fafc }));
     teto.rotation.x = Math.PI / 2;
     teto.position.y = ALTURA_CORREDOR;
     seg.add(teto);
@@ -116,7 +116,56 @@ class Corredor {
 
     this.criarLadoEmpresa(seg, -1);
     this.criarLadoEmpresa(seg, 1);
+    this.adicionarSombrasDeCanto(seg);
     return seg;
+  }
+
+  // ---------- Detalhes de realismo usados pelos dois cenários ----------
+
+  // Forro do teto em placas (como forro de escritório/escola)
+  texturaTeto() {
+    if (!this._teto) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 128, 128);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+      for (let i = 0; i < 160; i++) ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2); // furinhos
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(0, 0, 128, 128);
+      this._teto = new THREE.CanvasTexture(c);
+      this._teto.wrapS = this._teto.wrapT = THREE.RepeatWrapping;
+      this._teto.repeat.set(4, 8);
+      this._teto.anisotropy = 16;
+    }
+    return this._teto;
+  }
+
+  // "Sombra de canto": na vida real, onde a parede encontra o chão e o teto fica mais escuro.
+  // Imitamos isso com faixas em degradê (escuro perto da parede, transparente para o meio).
+  adicionarSombrasDeCanto(seg) {
+    if (!this._materialCanto) {
+      const c = document.createElement('canvas');
+      c.width = 64;
+      c.height = 4;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 64, 0);
+      grad.addColorStop(0, 'rgba(0, 0, 0, 0.38)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 64, 4);
+      this._materialCanto = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false });
+    }
+    for (const lado of [-1, 1]) {
+      for (const [y, giroX] of [[0.02, -Math.PI / 2], [ALTURA_CORREDOR - 0.02, Math.PI / 2]]) {
+        const faixa = new THREE.Mesh(new THREE.PlaneGeometry(0.9, TAM_SEGMENTO), this._materialCanto);
+        faixa.rotation.set(giroX, 0, lado > 0 ? Math.PI : 0); // escuro sempre do lado da parede
+        faixa.position.set(lado * (LARGURA_CORREDOR / 2 - 0.45), y, 0);
+        seg.add(faixa);
+      }
+    }
   }
 
   // Parede branca com sala de reunião de vidro, baia com computadores, gráfico e bebedouro.
@@ -283,7 +332,7 @@ class Corredor {
 
     const teto = new THREE.Mesh(
       new THREE.PlaneGeometry(LARGURA_CORREDOR, TAM_SEGMENTO),
-      new THREE.MeshLambertMaterial({ color: 0xf4f1ea })
+      new THREE.MeshLambertMaterial({ map: this.texturaTeto(), color: 0xf4f1ea })
     );
     teto.rotation.x = Math.PI / 2;
     teto.position.y = ALTURA_CORREDOR;
@@ -296,6 +345,7 @@ class Corredor {
 
     this.criarLado(seg, -1);
     this.criarLado(seg, 1);
+    this.adicionarSombrasDeCanto(seg);
     return seg;
   }
 
@@ -309,7 +359,12 @@ class Corredor {
     parede.position.set(xParede + lado * 0.1, ALTURA_CORREDOR / 2, 0);
     const rodape = caixa(0.06, 0.25, TAM_SEGMENTO, 0x1e3a8a);
     rodape.position.set(xParede + dentro * 0.03, 0.125, 0);
-    seg.add(parede, rodape);
+    // barrado: metade de baixo da parede pintada em azul-acinzentado, com friso
+    const barrado = caixa(0.04, 1.1, TAM_SEGMENTO, 0xdbe3f0);
+    barrado.position.set(xParede + dentro * 0.02, 0.55, 0);
+    const friso = caixa(0.07, 0.06, TAM_SEGMENTO, 0x94a3b8);
+    friso.position.set(xParede + dentro * 0.035, 1.1, 0);
+    seg.add(parede, rodape, barrado, friso);
 
     const armarios = new THREE.Mesh(
       new THREE.BoxGeometry(0.5, 2.3, 6),
@@ -350,8 +405,11 @@ class Corredor {
     const vaso = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.24, 0.6, 12), new THREE.MeshLambertMaterial({ color: 0x6b7280 }));
     vaso.position.set(xParede + dentro * 0.5, 0.3, 6.3);
     seg.add(vaso);
-    [[0, 0.95, 0, 0.4], [0.15, 1.3, 0.1, 0.3], [-0.15, 1.25, -0.1, 0.3]].forEach(([dx, y, dz, r]) => {
-      const folha = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), new THREE.MeshLambertMaterial({ color: 0x2f9e44 }));
+    // planta mais cheia, com folhas em tons diferentes de verde
+    [[0, 0.95, 0, 0.4, 0x2f9e44], [0.15, 1.3, 0.1, 0.3, 0x40c057], [-0.15, 1.25, -0.1, 0.3, 0x2b8a3e],
+      [0.2, 1.05, -0.15, 0.25, 0x37b24d], [-0.18, 1.05, 0.15, 0.25, 0x2f9e44], [0, 1.5, 0, 0.22, 0x51cf66]]
+      .forEach(([dx, y, dz, r, cor]) => {
+      const folha = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), new THREE.MeshLambertMaterial({ color: cor, flatShading: true }));
       folha.position.set(xParede + dentro * 0.5 + dx, y, 6.3 + dz);
       seg.add(folha);
     });

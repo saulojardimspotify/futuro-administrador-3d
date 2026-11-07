@@ -51,11 +51,11 @@ function texturaRostoTulio() {
 }
 
 function criarTulio() {
-  const tulio = criarPersonagem(TULIO, { mochila: false });
+  const tulio = criarPersonagem(TULIO, { mochila: false, rosto: false });
   const cabeca = tulio.userData.cabeca;
   // o rosto pintado cobre os olhos e a boca simples do boneco
-  const rosto = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.38), new THREE.MeshLambertMaterial({ map: texturaRostoTulio() }));
-  rosto.position.set(0, -0.03, -0.285);
+  const rosto = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.42), new THREE.MeshLambertMaterial({ map: texturaRostoTulio() }));
+  rosto.position.set(0, -0.04, -0.295);
   rosto.rotation.y = Math.PI; // virado para a frente do boneco (-Z)
   cabeca.add(rosto);
   cabeca.add(criarCapelo());
