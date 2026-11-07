@@ -107,19 +107,28 @@ function montarSelecao() {
 function escolher(i) {
   escolhido = i;
   document.querySelectorAll('.card').forEach((c, k) => c.classList.toggle('ativo', k === i));
-  if (previa) cena.remove(previa);
-  previa = criarPersonagem(PERSONAGENS[i]);
-  previa.traverse((o) => (o.castShadow = true));
-  cena.add(previa);
-  // no computador, troca a prévia pelo boneco realista assim que ele terminar de baixar
-  if (Modelos.disponivel && !CELULAR) {
-    Modelos.criar(PERSONAGENS[i]).then((real) => {
-      if (escolhido !== i || tela !== 'selecao') return;
-      cena.remove(previa);
-      previa = real.grupo;
-      cena.add(previa);
-    }).catch(() => {});
-  }
+  const trocarPrevia = (nova) => {
+    if (previa) cena.remove(previa);
+    previa = nova;
+    if (previa) cena.add(previa);
+  };
+  const deBlocos = () => {
+    const b = criarPersonagem(PERSONAGENS[i]);
+    b.traverse((o) => (o.castShadow = true));
+    return b;
+  };
+  if (!Modelos.disponivel) return trocarPrevia(deBlocos());
+  // No celular não há prévia 3D (os cartões bastam e economiza internet).
+  if (CELULAR) return trocarPrevia(null);
+  // Boneco realista: a prévia anterior continua na tela até o novo terminar de baixar
+  // (assim nunca aparece o boneco de blocos no meio da troca).
+  Modelos.criar(PERSONAGENS[i])
+    .then((real) => {
+      if (escolhido === i && tela === 'selecao') trocarPrevia(real.grupo);
+    })
+    .catch(() => {
+      if (escolhido === i && tela === 'selecao') trocarPrevia(deBlocos());
+    });
 }
 
 // Aviso "Carregando personagem... 45%" enquanto o modelo 3D baixa
@@ -537,10 +546,12 @@ function laco() {
   if (tela === 'selecao') {
     // Boneco girando devagar na tela de escolha
     const largo = innerWidth > 800;
-    previa.position.set(largo ? -1.6 : 0, 0, -3);
-    previa.rotation.y += dt * 0.8;
-    if (previa.userData.real) previa.userData.real.atualizar(dt);
-    else animarCorrida(previa, tempoTotal * 2, 0.15);
+    if (previa) {
+      previa.position.set(largo ? -1.6 : 0, 0, -3);
+      previa.rotation.y += dt * 0.8;
+      if (previa.userData.real) previa.userData.real.atualizar(dt);
+      else animarCorrida(previa, tempoTotal * 2, 0.15);
+    }
     camera.position.set(0, largo ? 1.7 : 2.4, 2.2);
     camera.lookAt(largo ? -0.4 : 0, largo ? 1.25 : 0.2, -3);
   } else if (tela === 'jogando') {
