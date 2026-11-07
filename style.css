@@ -179,6 +179,9 @@ input.erro { border-color: #ef4444; animation: tremer 0.3s; }
 /* durante a corrida o canto esquerdo é do HUD, então os botões vão para o meio */
 #hud:not(.escondido) ~ .btn-som { left: calc(50% - 28px); transform: translateX(-50%); }
 #hud:not(.escondido) ~ .btn-tela { left: calc(50% + 28px); }
+/* botão de qualidade (HD / Leve): só fora da corrida, porque trocar recarrega o jogo */
+.btn-qualidade { left: 128px; color: #fff; font: 900 13px Nunito, Arial, sans-serif; }
+#hud:not(.escondido) ~ .btn-qualidade { display: none; }
 
 #fade {
   position: fixed; inset: 0; background: #fff8e1;

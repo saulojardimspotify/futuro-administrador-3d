@@ -5,6 +5,18 @@ const CELULAR =
   /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
   (window.matchMedia && matchMedia('(pointer: coarse)').matches);
 
+// Qualidade escolhida no botão HD/⚡: 'alta' (padrão no computador) ou 'leve' (padrão no celular).
+// Fica guardada no navegador; trocar recarrega o jogo.
+const CHAVE_QUALIDADE = 'futuroAdministrador.qualidade';
+const QUALIDADE = (() => {
+  try {
+    return localStorage.getItem(CHAVE_QUALIDADE) || (CELULAR ? 'leve' : 'alta');
+  } catch (e) {
+    return CELULAR ? 'leve' : 'alta';
+  }
+})();
+const QUALIDADE_ALTA = QUALIDADE === 'alta';
+
 // Cria uma textura (imagem) com texto escrito, para colar em placas, livros etc.
 // O tamanho da fonte diminui sozinho até o texto caber.
 function criarTexturaTexto(linhas, opcoes) {

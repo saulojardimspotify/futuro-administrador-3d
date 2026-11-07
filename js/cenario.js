@@ -70,9 +70,10 @@ const Cenario = {
   },
 
   async carregarMoveis() {
-    // Só móveis leves. A planta (70 mil triângulos!), a luminária e o armário de gavetas
-    // deixavam o jogo travando; no lugar deles ficam as versões simples.
-    const nomes = ['banco', 'extintor', 'relogio', 'mesa-escritorio', 'cadeira-escritorio'];
+    // Qualidade leve: só móveis leves. Qualidade alta: também a planta (70 mil triângulos!),
+    // a luminária e o armário de gavetas, que são bonitos mas pesados.
+    const nomes = ['banco', 'extintor', 'relogio', 'mesa-escritorio', 'cadeira-escritorio']
+      .concat(QUALIDADE_ALTA ? ['planta2', 'gaveteiro', 'luminaria'] : []);
     const loader = new THREE.GLTFLoader();
     const lista = await Promise.all(nomes.map((n) =>
       loader.loadAsync(`modelos/glb/movel-${n}.glb?v=${VERSAO_CENARIO}`).catch(() => null)));
@@ -102,16 +103,19 @@ const Cenario = {
   },
 
   mobiliarFaculdade(seg, moveis) {
+    if (moveis.planta2) this.esconder(seg, ['planta']);
     for (const lado of [-1, 1]) {
       const deFrente = -lado * (Math.PI / 2); // virado para o meio do corredor
       this.colocar(seg, moveis, 'banco', lado, 0.32, 0, 0.6, deFrente);
-      if (lado > 0) this.colocar(seg, moveis, 'extintor', lado, 0.22, 0, 4.7, deFrente); // um por trecho basta
+      if (lado > 0 || QUALIDADE_ALTA) this.colocar(seg, moveis, 'extintor', lado, 0.22, 0, 4.7, deFrente);
       this.colocar(seg, moveis, 'relogio', lado, 0.04, 2.9, -4, deFrente);
+      if (lado > 0) this.colocar(seg, moveis, 'planta2', lado, 0.5, 0, 6.3, 0); // só existe na qualidade alta
     }
+    this.colocarLuminarias(seg, moveis, [-4, 4]);
   },
 
   mobiliarEmpresa(seg, moveis) {
-    this.esconder(seg, ['mesaBaia', 'cadeira']);
+    this.esconder(seg, ['mesaBaia', 'cadeira'].concat(moveis.gaveteiro ? ['mesaSala'] : []));
     for (const lado of [-1, 1]) {
       const deFrente = -lado * (Math.PI / 2);
       this.colocar(seg, moveis, 'mesa-escritorio', lado, 0.5, 0, 2.5, deFrente);
@@ -119,7 +123,11 @@ const Cenario = {
       const cadeira = this.colocar(seg, moveis, 'cadeira-escritorio', lado, 0.8, 0, 2.5, -deFrente);
       if (cadeira) cadeira.scale.setScalar(0.82);
       this.colocar(seg, moveis, 'relogio', lado, 0.04, 2.6, 0.2, deFrente);
+      // só existem na qualidade alta:
+      this.colocar(seg, moveis, 'gaveteiro', lado, 0.3, 0, -4, deFrente);
+      if (lado < 0) this.colocar(seg, moveis, 'planta2', lado, 0.45, 0, 5.0, 0);
     }
+    this.colocarLuminarias(seg, moveis, [-6, -2, 2, 6]);
   },
 
   // Luminária fluorescente de verdade no lugar dos painéis brancos do teto

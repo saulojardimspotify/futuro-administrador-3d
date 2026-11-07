@@ -23,7 +23,7 @@ const jogo = {};
 
 // Qualidade automática: se o jogo ficar lento (menos de 45 quadros por segundo),
 // a resolução baixa um pouco, até o mínimo de 1 pixel por ponto da tela.
-const qualidade = { maxima: 1, atual: 1, quadros: 0, tempo: 0 };
+const qualidade = { maxima: 1, minima: 1, atual: 1, quadros: 0, tempo: 0 };
 function ajustarQualidade(dtReal) {
   if (tela !== 'jogando' || jogo.tempo < 3) return; // ignora os primeiros segundos (carregando)
   qualidade.quadros++;
@@ -32,12 +32,13 @@ function ajustarQualidade(dtReal) {
   const fps = qualidade.quadros / qualidade.tempo;
   qualidade.quadros = qualidade.tempo = 0;
   if (fps >= 50) return;
-  // 1º) baixa a resolução aos poucos; 2º) se ainda estiver lento, desliga as sombras
-  if (qualidade.atual > 0.75) {
-    qualidade.atual = Math.max(0.75, qualidade.atual - 0.25);
+  // 1º) baixa a resolução aos poucos (até o mínimo da qualidade escolhida);
+  // 2º) só na qualidade leve: se ainda estiver lento, desliga as sombras
+  if (qualidade.atual > qualidade.minima) {
+    qualidade.atual = Math.max(qualidade.minima, qualidade.atual - 0.25);
     renderizador.setPixelRatio(qualidade.atual);
     aoRedimensionar();
-  } else if (sol.castShadow) {
+  } else if (!QUALIDADE_ALTA && sol.castShadow) {
     sol.castShadow = false;
   }
 }
@@ -46,13 +47,18 @@ function iniciar() {
   // No celular: sem suavização de bordas e menos pixels por ponto = bem mais rápido.
   // No computador: desenha em 1,5x a resolução da tela e reduz (supersampling) = bordas lisas.
   renderizador = new THREE.WebGLRenderer({ canvas: $('jogo'), antialias: !CELULAR, powerPreference: 'high-performance' });
-  qualidade.maxima = CELULAR ? Math.min(devicePixelRatio, 1.25) : Math.min(devicePixelRatio * 1.25, 2);
+  qualidade.maxima = CELULAR
+    ? Math.min(devicePixelRatio, QUALIDADE_ALTA ? 1.5 : 1.25)
+    : Math.min(devicePixelRatio * (QUALIDADE_ALTA ? 1.5 : 1.25), QUALIDADE_ALTA ? 2.5 : 2);
+  // na qualidade alta a resolução nunca fica abaixo da tela (não borra); na leve pode baixar mais
+  qualidade.minima = QUALIDADE_ALTA ? Math.min(1, qualidade.maxima) : 0.75;
   qualidade.atual = qualidade.maxima;
   renderizador.setPixelRatio(qualidade.atual);
   renderizador.setSize(innerWidth, innerHeight, false);
   // Sombras suaves
   renderizador.shadowMap.enabled = true;
-  renderizador.shadowMap.type = THREE.PCFShadowMap; // sombra "suave" pesa bem mais e quase não se nota
+  // sombra suave na qualidade alta; simples (mais leve) na leve
+  renderizador.shadowMap.type = QUALIDADE_ALTA ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
 
   cena = new THREE.Scene();
   cena.background = new THREE.Color(0xe6e1f0);
@@ -64,7 +70,7 @@ function iniciar() {
   sol = new THREE.DirectionalLight(0xfff1dc, 0.75);
   sol.position.set(3, 10, 6);
   sol.castShadow = true;
-  sol.shadow.mapSize.setScalar(CELULAR ? 512 : 1024);
+  sol.shadow.mapSize.setScalar(QUALIDADE_ALTA ? 2048 : CELULAR ? 512 : 1024);
   Object.assign(sol.shadow.camera, { left: -8, right: 8, top: 22, bottom: -22, near: 1, far: 40 });
   sol.shadow.bias = -0.0008;
   cena.add(sol, sol.target);
@@ -490,6 +496,20 @@ function fecharCapa() {
 function configurarControles() {
   $('btn-som').onclick = alternarSom;
   $('btn-jogar').onclick = fecharCapa;
+  // Qualidade: HD (bonita) ou Leve (rápida). Fica guardada e o jogo recarrega.
+  const bq = $('btn-qualidade');
+  bq.textContent = QUALIDADE_ALTA ? 'HD' : 'Leve';
+  bq.title = QUALIDADE_ALTA
+    ? 'Qualidade alta. Clique para a leve (mais rápida, para computador fraco).'
+    : 'Qualidade leve. Clique para a alta (mais bonita).';
+  bq.onclick = () => {
+    try {
+      localStorage.setItem(CHAVE_QUALIDADE, QUALIDADE_ALTA ? 'leve' : 'alta');
+    } catch (e) {
+      // sem armazenamento: a troca vale só até fechar a página
+    }
+    location.reload();
+  };
   // iPhone não permite tela cheia em páginas: lá o botão nem aparece
   if (pedirTelaCheia) {
     $('btn-tela').onclick = alternarTelaCheia;
