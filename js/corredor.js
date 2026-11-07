@@ -95,6 +95,7 @@ class Corredor {
     );
     piso.rotation.x = -Math.PI / 2;
     piso.receiveShadow = true;
+    piso.userData.papel = 'piso'; // papéis: usados por cenario.js para aplicar texturas e móveis realistas
     seg.add(piso);
     for (const x of [-1, 1]) {
       for (let k = 0; k < 4; k++) {
@@ -107,10 +108,12 @@ class Corredor {
     const teto = new THREE.Mesh(new THREE.PlaneGeometry(LARGURA_CORREDOR, TAM_SEGMENTO), new THREE.MeshLambertMaterial({ map: this.texturaTeto(), color: 0xf8fafc }));
     teto.rotation.x = Math.PI / 2;
     teto.position.y = ALTURA_CORREDOR;
+    teto.userData.papel = 'teto';
     seg.add(teto);
     for (const z of [-6, -2, 2, 6]) {
       const luz = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 1.2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
       luz.position.set(0, ALTURA_CORREDOR - 0.03, z);
+      luz.userData.papel = 'luz';
       seg.add(luz);
     }
 
@@ -176,6 +179,7 @@ class Corredor {
 
     const parede = caixa(0.2, ALTURA_CORREDOR, TAM_SEGMENTO, 0xf8fafc);
     parede.position.set(xParede + lado * 0.1, ALTURA_CORREDOR / 2, 0);
+    parede.userData.papel = 'parede';
     const faixa = caixa(0.04, 0.18, TAM_SEGMENTO, 0x0f766e); // faixa na cor da empresa
     faixa.position.set(x(0.02), 3.3, 0);
     const rodape = caixa(0.06, 0.2, TAM_SEGMENTO, 0x475569);
@@ -199,6 +203,7 @@ class Corredor {
     viga.position.set(x(0.9), 2.6, -4);
     const mesa = caixa(0.55, 0.75, 2.4, 0xe5e7eb);
     mesa.position.set(x(0.4), 0.375, -4);
+    mesa.userData.papel = 'mesaSala';
     seg.add(viga, mesa);
     const placa = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.38), new THREE.MeshBasicMaterial());
     placa.position.set(x(0.02), 3.0, -4);
@@ -209,6 +214,7 @@ class Corredor {
     // Baia aberta para o corredor (z de 1 a 4)
     const mesaBaia = caixa(0.7, 0.75, 2.8, 0xe2e8f0);
     mesaBaia.position.set(x(0.4), 0.375, 2.5);
+    mesaBaia.userData.papel = 'mesaBaia';
     seg.add(mesaBaia);
     for (const z of [0.95, 4.05]) {
       const divisoria = caixa(1.0, 1.25, 0.06, 0x64748b);
@@ -225,6 +231,7 @@ class Corredor {
     }
     const cadeira = caixa(0.45, 0.9, 0.45, 0x1f2937);
     cadeira.position.set(x(1.0), 0.45, 2.5);
+    cadeira.userData.papel = 'cadeira';
     seg.add(cadeira);
 
     // Quadro com gráfico de barras na parede, acima da baia
@@ -319,6 +326,7 @@ class Corredor {
     );
     piso.rotation.x = -Math.PI / 2;
     piso.receiveShadow = true;
+    piso.userData.papel = 'piso'; // papéis: usados por cenario.js para aplicar texturas e móveis realistas
     seg.add(piso);
 
     // Linhas tracejadas que separam as 3 faixas
@@ -336,10 +344,12 @@ class Corredor {
     );
     teto.rotation.x = Math.PI / 2;
     teto.position.y = ALTURA_CORREDOR;
+    teto.userData.papel = 'teto';
     seg.add(teto);
     for (const z of [-4, 4]) {
       const luz = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 0.7), new THREE.MeshBasicMaterial({ color: 0xffffff }));
       luz.position.set(0, ALTURA_CORREDOR - 0.03, z);
+      luz.userData.papel = 'luz';
       seg.add(luz);
     }
 
@@ -357,6 +367,7 @@ class Corredor {
 
     const parede = caixa(0.2, ALTURA_CORREDOR, TAM_SEGMENTO, 0xf3ead8);
     parede.position.set(xParede + lado * 0.1, ALTURA_CORREDOR / 2, 0);
+    parede.userData.papel = 'parede';
     const rodape = caixa(0.06, 0.25, TAM_SEGMENTO, 0x1e3a8a);
     rodape.position.set(xParede + dentro * 0.03, 0.125, 0);
     // barrado: metade de baixo da parede pintada em azul-acinzentado, com friso
@@ -371,6 +382,7 @@ class Corredor {
       new THREE.MeshLambertMaterial({ map: this.texturaArmario })
     );
     armarios.position.set(xParede + dentro * 0.25, 1.15, -4);
+    armarios.userData.papel = 'armario';
     seg.add(armarios);
 
     // Mural de avisos com bilhetes coloridos
@@ -387,8 +399,10 @@ class Corredor {
     // Porta da sala
     const batente = caixa(0.12, 2.8, 1.6, 0x8b5a2b);
     batente.position.set(xParede + dentro * 0.06, 1.4, 3);
+    batente.userData.papel = 'porta';
     const porta = caixa(0.1, 2.6, 1.3, 0xb7793e);
     porta.position.set(xParede + dentro * 0.1, 1.3, 3);
+    porta.userData.papel = 'porta';
     const janela = caixa(0.02, 0.6, 0.4, 0xbfe3ff);
     janela.position.set(xParede + dentro * 0.16, 1.9, 3);
     const macaneta = caixa(0.06, 0.06, 0.2, 0xd1d5db);
@@ -404,6 +418,7 @@ class Corredor {
     // Vaso com planta
     const vaso = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.24, 0.6, 12), new THREE.MeshLambertMaterial({ color: 0x6b7280 }));
     vaso.position.set(xParede + dentro * 0.5, 0.3, 6.3);
+    vaso.userData.papel = 'planta';
     seg.add(vaso);
     // planta mais cheia, com folhas em tons diferentes de verde
     [[0, 0.95, 0, 0.4, 0x2f9e44], [0.15, 1.3, 0.1, 0.3, 0x40c057], [-0.15, 1.25, -0.1, 0.3, 0x2b8a3e],
@@ -411,6 +426,7 @@ class Corredor {
       .forEach(([dx, y, dz, r, cor]) => {
       const folha = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), new THREE.MeshLambertMaterial({ color: cor, flatShading: true }));
       folha.position.set(xParede + dentro * 0.5 + dx, y, 6.3 + dz);
+      folha.userData.papel = 'planta';
       seg.add(folha);
     });
   }

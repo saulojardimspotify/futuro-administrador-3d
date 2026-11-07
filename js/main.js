@@ -67,6 +67,8 @@ function iniciar() {
 
   corredor = new Corredor(cena);
   itens = new Itens(cena);
+  // cenário realista: texturas, reflexos e móveis (carrega em segundo plano)
+  Cenario.melhorar(renderizador, cena, corredor).catch(() => {});
 
   montarSelecao();
   configurarControles();

@@ -46,6 +46,7 @@ function corrigirPesos(gltf) {
   if (gltf.pesosCorrigidos) return;
   gltf.pesosCorrigidos = true;
   gltf.scene.traverse((o) => {
+    if (o.isMesh) linearizarTexturas(o.material); // cores certas (veja cenario.js)
     const pesos = o.isSkinnedMesh && o.geometry.attributes.skinWeight;
     if (!pesos || !(pesos.array instanceof Uint8Array)) return;
     const a = pesos.array;
