@@ -113,7 +113,9 @@ const Cenario = {
     for (const lado of [-1, 1]) {
       const deFrente = -lado * (Math.PI / 2);
       this.colocar(seg, moveis, 'mesa-escritorio', lado, 0.5, 0, 2.5, deFrente);
-      this.colocar(seg, moveis, 'cadeira-escritorio', lado, 1.2, 0, 2.5, -deFrente);
+      // cadeira encaixada embaixo da mesa (mais longe das faixas, para não parecer obstáculo)
+      const cadeira = this.colocar(seg, moveis, 'cadeira-escritorio', lado, 0.8, 0, 2.5, -deFrente);
+      if (cadeira) cadeira.scale.setScalar(0.82);
       this.colocar(seg, moveis, 'gaveteiro', lado, 0.3, 0, -4, deFrente);
       this.colocar(seg, moveis, 'planta2', lado, 0.45, 0, 5.0, 0);
       this.colocar(seg, moveis, 'relogio', lado, 0.04, 2.6, 0.2, deFrente);
