@@ -71,8 +71,9 @@ class Corredor {
   criarSegmentoEmpresa() {
     if (!this.pisoEmpresa) {
       const c = document.createElement('canvas');
-      c.width = c.height = 128;
+      c.width = c.height = 256; // dobro de detalhe
       const ctx = c.getContext('2d');
+      ctx.scale(2, 2); // desenha como antes, em 128x128
       ctx.fillStyle = '#9aa3b0';
       ctx.fillRect(0, 0, 128, 128);
       ctx.fillStyle = '#a9b2be';
@@ -82,6 +83,7 @@ class Corredor {
       ctx.strokeRect(0, 0, 128, 128);
       this.pisoEmpresa = new THREE.CanvasTexture(c);
       this.pisoEmpresa.wrapS = this.pisoEmpresa.wrapT = THREE.RepeatWrapping;
+      this.pisoEmpresa.anisotropy = 16; // nítido mesmo de longe
       this.pisoEmpresa.repeat.set(4, 8);
       this.texturaGrafico = this.criarTexturaGrafico();
     }
@@ -219,8 +221,9 @@ class Corredor {
 
   criarTexturaPiso() {
     const c = document.createElement('canvas');
-    c.width = c.height = 128;
+    c.width = c.height = 256; // dobro de detalhe
     const ctx = c.getContext('2d');
+    ctx.scale(2, 2); // desenha como antes, em 128x128
     ctx.fillStyle = '#8b91e3';
     ctx.fillRect(0, 0, 128, 128);
     ctx.fillStyle = '#9ba1ec';
@@ -230,6 +233,7 @@ class Corredor {
     ctx.strokeRect(0, 0, 128, 128);
     const t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 16; // nítido mesmo de longe
     t.repeat.set(4, 8);
     return t;
   }
@@ -251,6 +255,7 @@ class Corredor {
     ctx.fillRect(96, 230, 12, 50);
     const t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 16; // nítido mesmo de longe
     t.repeat.set(6, 1);
     return t;
   }

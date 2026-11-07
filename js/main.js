@@ -21,10 +21,30 @@ let tremor = 0;
 // Variáveis da partida atual
 const jogo = {};
 
+// Qualidade automática: se o jogo ficar lento (menos de 45 quadros por segundo),
+// a resolução baixa um pouco, até o mínimo de 1 pixel por ponto da tela.
+const qualidade = { maxima: 1, atual: 1, quadros: 0, tempo: 0 };
+function ajustarQualidade(dtReal) {
+  if (tela !== 'jogando' || jogo.tempo < 3) return; // ignora os primeiros segundos (carregando)
+  qualidade.quadros++;
+  qualidade.tempo += dtReal;
+  if (qualidade.tempo < 2) return;
+  const fps = qualidade.quadros / qualidade.tempo;
+  qualidade.quadros = qualidade.tempo = 0;
+  if (fps < 45 && qualidade.atual > 1) {
+    qualidade.atual = Math.max(1, qualidade.atual - 0.25);
+    renderizador.setPixelRatio(qualidade.atual);
+    aoRedimensionar();
+  }
+}
+
 function iniciar() {
-  // No celular: sem suavização de bordas e menos pixels por ponto = bem mais rápido
+  // No celular: sem suavização de bordas e menos pixels por ponto = bem mais rápido.
+  // No computador: desenha em 1,5x a resolução da tela e reduz (supersampling) = bordas lisas.
   renderizador = new THREE.WebGLRenderer({ canvas: $('jogo'), antialias: !CELULAR, powerPreference: 'high-performance' });
-  renderizador.setPixelRatio(Math.min(devicePixelRatio, CELULAR ? 1.5 : 2));
+  qualidade.maxima = CELULAR ? Math.min(devicePixelRatio, 1.5) : Math.min(devicePixelRatio * 1.5, 2.5);
+  qualidade.atual = qualidade.maxima;
+  renderizador.setPixelRatio(qualidade.atual);
   renderizador.setSize(innerWidth, innerHeight, false);
   // Sombras suaves
   renderizador.shadowMap.enabled = true;
@@ -40,7 +60,7 @@ function iniciar() {
   sol = new THREE.DirectionalLight(0xfff1dc, 0.75);
   sol.position.set(3, 10, 6);
   sol.castShadow = true;
-  sol.shadow.mapSize.setScalar(CELULAR ? 512 : 1024);
+  sol.shadow.mapSize.setScalar(CELULAR ? 512 : 2048);
   Object.assign(sol.shadow.camera, { left: -8, right: 8, top: 22, bottom: -22, near: 1, far: 40 });
   sol.shadow.bias = -0.0008;
   cena.add(sol, sol.target);
@@ -448,8 +468,10 @@ function aoRedimensionar() {
 
 function laco() {
   requestAnimationFrame(laco);
-  const dt = Math.min(relogio.getDelta(), 0.05);
+  const dtReal = relogio.getDelta();
+  const dt = Math.min(dtReal, 0.05);
   tempoTotal += dt;
+  if (!document.hidden) ajustarQualidade(dtReal);
   if (renderizador.domElement.width !== Math.floor(innerWidth * renderizador.getPixelRatio())) aoRedimensionar();
 
   if (tela === 'selecao') {

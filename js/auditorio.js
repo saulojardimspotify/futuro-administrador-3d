@@ -81,7 +81,7 @@ class Auditorio {
     holofote.position.set(0, 12, -4);
     holofote.target.position.set(0, 1, -12);
     holofote.castShadow = true;
-    holofote.shadow.mapSize.setScalar(CELULAR ? 512 : 1024);
+    holofote.shadow.mapSize.setScalar(CELULAR ? 512 : 2048);
     cena.add(holofote, holofote.target);
 
     this.montarSala();

@@ -46,7 +46,7 @@ function criarTexturaTexto(linhas, opcoes) {
   lista.forEach((linha, i) => ctx.fillText(linha, canvas.width / 2, inicio + i * alturaLinha));
 
   const textura = new THREE.CanvasTexture(canvas);
-  textura.anisotropy = 4;
+  textura.anisotropy = 16;
   return textura;
 }
 

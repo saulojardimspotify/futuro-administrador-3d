@@ -269,7 +269,7 @@ function texturaMeta(nome) {
   ctx.fillText(nome, 256, 345);
 
   const textura = new THREE.CanvasTexture(c);
-  textura.anisotropy = 8;
+  textura.anisotropy = 16;
   texturasMeta[nome] = textura;
   return textura;
 }

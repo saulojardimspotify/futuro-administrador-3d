@@ -129,7 +129,7 @@ function texturaDisciplina(d) {
   linhas.forEach((l, i) => ctx.fillText(l, 270, 279 + (i - (linhas.length - 1) / 2) * tamanho * 1.02));
 
   const textura = new THREE.CanvasTexture(c);
-  textura.anisotropy = 8;
+  textura.anisotropy = 16;
   if (foto) texturasDisciplina[d.nome] = textura;
   return textura;
 }
