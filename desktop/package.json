@@ -1,0 +1,24 @@
+{
+  "name": "futuro-administrador",
+  "productName": "Futuro Administrador",
+  "version": "1.0.0",
+  "description": "Futuro Administrador: jogo 3D do curso de Administração (ISECENSA)",
+  "author": "Saulo Jardim",
+  "main": "main.js",
+  "scripts": {
+    "preparar": "node preparar.js ..",
+    "abrir": "electron .",
+    "montar": "electron-builder --win portable --x64"
+  },
+  "build": {
+    "appId": "br.isecensa.futuroadministrador",
+    "productName": "Futuro Administrador",
+    "files": ["main.js", "jogo/**"],
+    "win": { "target": "portable", "signAndEditExecutable": false },
+    "portable": { "artifactName": "FuturoAdministrador.exe" }
+  },
+  "devDependencies": {
+    "electron": "31.7.7",
+    "electron-builder": "24.13.3"
+  }
+}

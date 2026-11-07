@@ -3,3 +3,9 @@
 # arquivos originais do Mixamo (pesados): so os .glb convertidos vao para o site
 modelos/personagens/
 modelos/anima*/
+
+# versao para computador: o .exe e as pastas geradas na montagem nao vao para o site
+executavel/
+desktop/jogo/
+desktop/node_modules/
+desktop/dist/
