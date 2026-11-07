@@ -285,6 +285,15 @@ function criarObstaculo(tipo) {
     }
     // Dois bonecos dançando, um de cada lado da caixa de som
     g.userData.dancarinos = [-0.78, 0.78].map((x) => {
+      // dançarino realista dançando salsa (se já baixou); senão, boneco de blocos
+      const real = Modelos.criarJa(null, 'dancar');
+      if (real) {
+        real.grupo.scale.setScalar(0.85);
+        real.grupo.position.set(x, 0, 0.15);
+        real.grupo.rotation.y = Math.PI + (x < 0 ? 0.35 : -0.35); // de frente para o jogador
+        g.add(real.grupo);
+        return real.grupo;
+      }
       const base = PERSONAGENS[Math.floor(Math.random() * PERSONAGENS.length)];
       const pessoa = criarPersonagem(Object.assign({}, base, { camisa: Math.floor(Math.random() * 0xffffff) }), { mochila: false });
       pessoa.scale.setScalar(0.62);
@@ -475,6 +484,7 @@ class Itens {
   // Dança: pulinhos no ritmo, corpo balançando e braços para cima alternados.
   animarFesta(d, t) {
     d.dancarinos.forEach((p, i) => {
+      if (p.userData.real) return p.userData.real.atualizarAte(t); // dança de verdade
       const f = t * 8 + i * Math.PI;
       const membros = p.userData;
       p.position.y = Math.abs(Math.sin(f)) * 0.12;

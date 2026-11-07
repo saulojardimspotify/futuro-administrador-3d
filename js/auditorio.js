@@ -76,6 +76,11 @@ class Auditorio {
 
     const cena = (this.cena = new THREE.Scene());
     cena.background = new THREE.Color(0x1a0f0a);
+    // mesma iluminação realista do corredor (reflexos suaves nos bonecos e no palco)
+    if (Cenario.ambiente) {
+      cena.environment = Cenario.ambiente;
+      this.ambienteSuave = true;
+    }
     this.camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
 
     cena.add(new THREE.HemisphereLight(0xfff1dd, 0x442211, 0.75));
@@ -90,7 +95,14 @@ class Auditorio {
     this.montarPlateia();
 
     // Prof. Túlio no palco, virado na diagonal: olha para o formando e para a câmera
-    this.reitor = criarTulio();
+    // Túlio realista (de capelo) ou, se não baixou, o de blocos
+    this.tulioReal = Modelos.criarJa('tulio', 'parado');
+    if (this.tulioReal) {
+      this.reitor = this.tulioReal.grupo;
+      this.tulioReal.prenderNoOsso('Head', criarCapelo(), new THREE.Vector3(0, 0.2, 0.02), 0.42);
+    } else {
+      this.reitor = criarTulio();
+    }
     this.reitor.position.set(1.15, 1, -11.8);
     this.reitor.rotation.y = (Math.PI * 3) / 4;
     cena.add(this.reitor);
@@ -131,6 +143,7 @@ class Auditorio {
 
   // Posição (no mundo) da mão direita do Túlio, de onde sai o diploma.
   maoDoTulio() {
+    if (this.tulioReal) return this.tulioReal.posicaoDoOsso('RightHand');
     this.reitor.updateMatrixWorld(true);
     return this.reitor.userData.bracoD.localToWorld(new THREE.Vector3(0, -0.62, 0));
   }
@@ -196,6 +209,19 @@ class Auditorio {
           encosto.position.set(x, 0.85, z + 0.45);
           this.cena.add(assento, encosto);
 
+          // Plateia realista (aplaudindo sentada) só nas 3 primeiras fileiras e 2 cadeiras
+          // mais perto do corredor: é o que a câmera mostra, e bonecos realistas pesam.
+          if (Modelos.usarFigurantes && Modelos.prontos.isabella) {
+            if (fila > 2 || col > 1) continue;
+            const real = Modelos.criarJa(null, 'aplaudir-sentado');
+            if (real) {
+              real.grupo.position.set(x, 0, z + 0.05);
+              this.cena.add(real.grupo);
+              this.plateia.push(real.grupo);
+              continue;
+            }
+          }
+
           const base = PERSONAGENS[Math.floor(Math.random() * PERSONAGENS.length)];
           const def = Object.assign({}, base, { camisa: Math.floor(Math.random() * 0xffffff) });
           const pessoa = criarPersonagem(def, { mochila: false });
@@ -253,13 +279,14 @@ class Auditorio {
       animarCorrida(j, 0, 0);
     }
     if (this.real) this.real.atualizar(dt);
+    if (this.tulioReal) this.tulioReal.atualizar(dt);
 
     // 4) Vira para o reitor e recebe o diploma (6,2 a 8 s)
     if (t >= 6.2 && t < 8.6) {
       // vira na diagonal, de costas para a câmera e de frente para o Túlio
       j.rotation.y = (-Math.PI / 4) * suave(progresso(t, 6.2, 6.7));
       if (!this.real) jp.bracoD.rotation.x = 1.3 * progresso(t, 6.7, 7.0);
-      this.reitor.userData.bracoD.rotation.x = 1.3 * progresso(t, 6.4, 6.8);
+      if (!this.tulioReal) this.reitor.userData.bracoD.rotation.x = 1.3 * progresso(t, 6.4, 6.8);
       if (this.diploma.parent === this.cena) {
         j.updateMatrixWorld(true);
         const mao = this.real
@@ -277,7 +304,7 @@ class Auditorio {
             this.diploma.position.set(0, -0.62, -0.05);
             this.diploma.rotation.set(0, 0, Math.PI / 2);
           }
-          this.reitor.userData.bracoD.rotation.x = 0;
+          if (!this.tulioReal) this.reitor.userData.bracoD.rotation.x = 0;
         }
       }
     }
@@ -303,6 +330,10 @@ class Auditorio {
 
     // Plateia aplaudindo
     for (const p of this.plateia) {
+      if (p.userData.real) {
+        p.userData.real.atualizar(dt);
+        continue;
+      }
       const bate = Math.sin(t * 14 + p.userData.fase) * 0.25;
       p.userData.bracoE.rotation.set(1.2, 0, -0.5 + bate);
       p.userData.bracoD.rotation.set(1.2, 0, 0.5 - bate);

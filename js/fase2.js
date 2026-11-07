@@ -93,25 +93,51 @@ function bonecoDeFrente(def, escala) {
 function criarChefe() {
   const t = prepararTexturasFase2();
   const g = new THREE.Group();
-  const chefe = bonecoDeFrente({ pele: 0xe8b892, cabelo: 0x4b5563, longo: false, camisa: 0x1f2937, calca: 0x111827 }, 1);
-  const rosto = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.42), new THREE.MeshLambertMaterial({ map: rostoBravo() }));
-  rosto.position.set(0, -0.04, -0.295);
-  rosto.rotation.y = Math.PI;
-  chefe.userData.cabeca.add(rosto);
-  const gravata = caixa(0.1, 0.45, 0.02, 0xdc2626);
-  gravata.position.set(0, 1.15, -0.19);
-  chefe.add(gravata);
+  // chefe realista ("The Boss" do Mixamo) ou, se não baixou, o de blocos com rosto bravo
+  const real = Modelos.criarJa('chefe', 'bravo');
+  let chefe;
+  if (real) {
+    chefe = real.grupo;
+    chefe.rotation.y = Math.PI; // de frente para o jogador
+  } else {
+    chefe = bonecoDeFrente({ pele: 0xe8b892, cabelo: 0x4b5563, longo: false, camisa: 0x1f2937, calca: 0x111827 }, 1);
+    const rosto = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.42), new THREE.MeshLambertMaterial({ map: rostoBravo() }));
+    rosto.position.set(0, -0.04, -0.295);
+    rosto.rotation.y = Math.PI;
+    chefe.userData.cabeca.add(rosto);
+    const gravata = caixa(0.1, 0.45, 0.02, 0xdc2626);
+    gravata.position.set(0, 1.15, -0.19);
+    chefe.add(gravata);
+  }
   g.add(chefe);
 
-  // nuvem de raiva em cima da cabeça
+  // nuvem de raiva em cima da cabeça (mais baixa no realista, que é menor)
+  const yNuvem = real ? -0.35 : 0;
   for (const [x, y, r] of [[-0.25, 2.55, 0.22], [0.05, 2.65, 0.28], [0.32, 2.55, 0.2]]) {
     const bola = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), new THREE.MeshLambertMaterial({ color: 0x7f1d1d }));
-    bola.position.set(x, y, 0);
+    bola.position.set(x, y + yNuvem, 0);
     g.add(bola);
   }
   const grrr = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.34), new THREE.MeshBasicMaterial({ map: t.grrr }));
-  grrr.position.set(0.03, 2.6, 0.32);
+  grrr.position.set(0.03, 2.6 + yNuvem, 0.32);
   g.add(grrr);
+
+  if (real) {
+    // gesto de bravo parado; andando de verdade quando vem atrás do jogador
+    let zInicial = null;
+    g.userData.animar = (tempo, jogo) => {
+      if (zInicial === null) zInicial = g.position.z;
+      const dt = real.ultimoT === undefined ? 0 : Math.min(0.1, tempo - real.ultimoT);
+      const andou = g.position.z - zInicial;
+      if (jogo && jogo.z - g.position.z < 40 && andou < (g.userData.limite ?? 8)) {
+        g.position.z += dt * 7;
+        real.tocar('andar', 0.2);
+        real.velocidade(1.8); // passos rápidos
+      } else real.tocar('bravo', 0.2);
+      real.atualizarAte(tempo);
+    };
+    return g;
+  }
 
   // Dedo apontando e balançando. Quando o jogador está a 40 m, o chefe vem andando
   // rápido na direção dele. Ele para antes da fileira da frente ("limite", definido
@@ -141,14 +167,25 @@ function criarChefe() {
 function criarReuniao() {
   const t = prepararTexturasFase2();
   const g = new THREE.Group();
+  // com pessoas realistas (tamanho de gente), a mesa fica mais alta e as pessoas mais afastadas
+  const realista = !!Modelos.prontos.isabella && Modelos.usarFigurantes;
+  const alturaMesa = realista ? 0.75 : 0.55;
   const mesa = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.05, 18), new THREE.MeshLambertMaterial({ color: 0xd1d5db }));
-  mesa.position.y = 0.55;
-  const pe = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.55, 8), new THREE.MeshLambertMaterial({ color: 0x475569 }));
-  pe.position.y = 0.275;
+  mesa.position.y = alturaMesa;
+  const pe = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, alturaMesa, 8), new THREE.MeshLambertMaterial({ color: 0x475569 }));
+  pe.position.y = alturaMesa / 2;
   g.add(mesa, pe);
 
   // 3 pessoas em volta da mesa, viradas para o centro
   const pessoas = [Math.PI / 6, (Math.PI * 5) / 6, (Math.PI * 3) / 2].map((a) => {
+    const real = realista && Modelos.criarJa(null, 'conversar');
+    if (real) {
+      real.grupo.scale.setScalar(0.85);
+      real.grupo.position.set(Math.sin(a) * 0.72, 0, Math.cos(a) * 0.72);
+      real.grupo.rotation.y = a;
+      g.add(real.grupo);
+      return real.grupo;
+    }
     const base = PERSONAGENS[Math.floor(Math.random() * PERSONAGENS.length)];
     const p = criarPersonagem(Object.assign({}, base, { camisa: Math.floor(Math.random() * 0xffffff) }), { mochila: false });
     p.scale.setScalar(0.62);
@@ -158,13 +195,17 @@ function criarReuniao() {
     return p;
   });
   const balao = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.48), new THREE.MeshBasicMaterial({ map: t.bla }));
-  balao.position.set(0, 1.85, 0.3);
+  const alturaBalao = realista ? 2.0 : 1.85;
+  balao.position.set(0, alturaBalao, 0.3);
   g.add(balao);
 
-  // gesticulando e o balão subindo e descendo
+  // conversando (realista) ou gesticulando (blocos); o balão sobe e desce
   g.userData.animar = (tempo) => {
-    pessoas.forEach((p, i) => (p.userData.bracoD.rotation.x = 0.8 + Math.sin(tempo * 6 + i * 2) * 0.5));
-    balao.position.y = 1.85 + Math.sin(tempo * 3) * 0.06;
+    pessoas.forEach((p, i) => {
+      if (p.userData.real) p.userData.real.atualizarAte(tempo);
+      else p.userData.bracoD.rotation.x = 0.8 + Math.sin(tempo * 6 + i * 2) * 0.5;
+    });
+    balao.position.y = alturaBalao + Math.sin(tempo * 3) * 0.06;
   };
   return g;
 }

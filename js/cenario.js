@@ -12,6 +12,7 @@ const Cenario = {
     if (THREE.RoomEnvironment) {
       const pmrem = new THREE.PMREMGenerator(renderizador);
       cena.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+      this.ambiente = cena.environment; // o auditório usa a mesma iluminação
       // com a "sala virtual" iluminando, as outras luzes ficam mais fracas (senão estoura de claro)
       cena.traverse((o) => {
         if (o.isHemisphereLight) o.intensity = 0.35;

@@ -199,6 +199,12 @@ async function comecarPartida(numFase = 1) {
         if (e.total) mostrarCarregando(`Carregando personagem... ${Math.round((e.loaded / e.total) * 100)}%`);
       });
       boneco = real.grupo;
+      // figurantes realistas da fase (dançarinos, reunião, chefe); só no computador
+      if (Modelos.usarFigurantes) {
+        mostrarCarregando('Carregando colegas...');
+        await Modelos.preparar(fase === 2 ? [...FIGURANTES, 'chefe'] : FIGURANTES);
+        if (fase === 1) Modelos.preparar(['tulio']); // para a formatura (em segundo plano)
+      }
     } catch (erro) {
       Modelos.disponivel = false;
     }
@@ -432,7 +438,10 @@ function irParaAuditorio() {
     $('fade').classList.remove('ativo');
     };
     // boneco realista na formatura (já está baixado, então é rápido); se falhar, usa o de blocos
-    if (jogador.userData.real) Modelos.criar(def).then(montar, () => montar(null));
+    if (jogador.userData.real) {
+      Promise.all([Modelos.criar(def), Modelos.preparar(['tulio', ...FIGURANTES])])
+        .then(([real]) => montar(real), () => montar(null));
+    }
     else montar(null);
   }, 900);
 }

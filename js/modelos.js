@@ -3,7 +3,10 @@
 // o index.html direto do computador), o jogo usa os bonecos de blocos de antes.
 
 const ALTURA_BONECO = 1.85; // altura do boneco no jogo (os modelos vêm em centímetros)
-const ANIMACOES = ['correr', 'pular', 'deslizar', 'comemorar', 'parado'];
+const ANIMACOES = ['correr', 'pular', 'deslizar', 'comemorar', 'parado',
+  'dancar', 'aplaudir-sentado', 'conversar', 'bravo', 'andar'];
+// figurantes (festa, reunião, plateia) usam os modelos mais leves
+const FIGURANTES = ['isabella', 'mariaflor', 'valentina'];
 const VERSAO_MODELOS = 1;
 
 const Modelos = {
@@ -36,6 +39,45 @@ const Modelos = {
     const [gltf, clips] = await Promise.all([this.cache[def.arquivo], this.carregarAnimacoes()]);
     corrigirPesos(gltf);
     return new BonecoReal(gltf, clips);
+  },
+
+  // ---------- Figurantes (NPCs) ----------
+  // Os obstáculos são criados na hora, sem esperar download. Por isso os modelos dos
+  // figurantes são baixados antes ("preparar") e depois criados na hora ("criarJa").
+  // No celular continuam os bonecos de blocos (bonecos realistas pesam muito para desenhar).
+  prontos: {},
+  clipsProntos: null,
+  usarFigurantes: location.protocol.startsWith('http') && !CELULAR,
+
+  preparar(arquivos) {
+    if (!this.disponivel || !this.usarFigurantes) return Promise.resolve();
+    const tarefas = arquivos.map((arquivo) => {
+      if (!this.cache[arquivo]) {
+        this.cache[arquivo] = this.baixar(`modelos/glb/${arquivo}.glb`);
+        this.cache[arquivo].catch(() => delete this.cache[arquivo]);
+      }
+      return this.cache[arquivo].then((gltf) => {
+        corrigirPesos(gltf);
+        // geometria e materiais são compartilhados entre as cópias: não podem ser apagados
+        gltf.scene.traverse((o) => {
+          if (o.geometry) o.geometry.userData.compartilhado = true;
+          if (o.material) [].concat(o.material).forEach((m) => (m.userData.compartilhado = true));
+        });
+        this.prontos[arquivo] = gltf;
+      });
+    });
+    tarefas.push(this.carregarAnimacoes().then((c) => (this.clipsProntos = c)));
+    return Promise.all(tarefas).catch(() => {});
+  },
+
+  // Cria um figurante já tocando uma animação; devolve null se ainda não baixou
+  criarJa(arquivo, animacao) {
+    const gltf = this.prontos[arquivo || FIGURANTES[Math.floor(Math.random() * FIGURANTES.length)]];
+    if (!gltf || !this.clipsProntos) return null;
+    const real = new BonecoReal(gltf, this.clipsProntos);
+    real.tocar(animacao, 0);
+    real.acaoAtual.time = Math.random() * real.acaoAtual.getClip().duration; // cada um num ponto da animação
+    return real;
   },
 };
 
@@ -135,6 +177,12 @@ class BonecoReal {
 
   atualizar(dt) {
     this.mixer.update(dt);
+  }
+
+  // Para quem só recebe o "relógio" do jogo (obstáculos): calcula o tempo que passou
+  atualizarAte(t) {
+    if (this.ultimoT !== undefined) this.mixer.update(Math.min(0.1, t - this.ultimoT));
+    this.ultimoT = t;
   }
 
   // Prende um objeto (capelo, diploma) num osso, compensando a escala minúscula do modelo
