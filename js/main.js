@@ -11,6 +11,7 @@ let tela = 'selecao';
 let escolhido = 0;
 let nomeJogador = '';
 let fase = 1; // 1 = faculdade, 2 = estágio na empresa
+let faseEscolhida = 1; // fase que começa ao confirmar o nome (2 quando vem de "Jogar de novo a fase 2")
 let segurandoAbaixo = false; // a tecla de abaixar está pressionada?
 
 let renderizador, cena, camera, sol, corredor, itens, jogador, previa, auditorio;
@@ -105,11 +106,12 @@ function montarSelecao() {
     $('nome').classList.remove('erro');
     $('previa-nome').textContent = `Futuro Administrador ${$('nome').value.trim() || '...'}`;
   });
-  $('btn-comecar').onclick = () => comecarPartida(1);
-  $('btn-tentar').onclick = () => comecarPartida(fase);
-  $('btn-denovo').onclick = () => comecarPartida(1);
+  $('btn-comecar').onclick = () => comecarPartida(faseEscolhida);
+  // Jogar/tentar de novo: volta para a escolha com o nome em branco (próxima pessoa joga)
+  $('btn-tentar').onclick = () => novoJogador(fase);
+  $('btn-denovo').onclick = () => novoJogador(1);
   $('btn-fase2').onclick = () => comecarPartida(2);
-  $('btn-denovo2').onclick = () => comecarPartida(2);
+  $('btn-denovo2').onclick = () => novoJogador(2);
   document.querySelectorAll('.btn-inicio').forEach((b) => (b.onclick = voltarInicio));
 
   escolher(0);
@@ -160,13 +162,24 @@ function voltarSelecao() {
   aplicarTema();
   esconderTelas();
   HUD.esconder();
+  // nome em branco: a próxima pessoa digita o dela
+  $('nome').value = '';
+  $('previa-nome').textContent = 'Futuro Administrador ...';
   $('tela-selecao').classList.remove('escondido');
   escolher(escolhido);
   focarCartao();
 }
 
+// "Jogar de novo" / "Tentar de novo": volta para a escolha (nome em branco) e,
+// ao confirmar o nome, começa a fase indicada
+function novoJogador(numFase) {
+  faseEscolhida = numFase;
+  voltarSelecao();
+}
+
 // "Voltar ao início": volta para a tela de abertura com a foto da faculdade
 function voltarInicio() {
+  faseEscolhida = 1;
   voltarSelecao();
   $('tela-capa').classList.remove('escondido');
   $('btn-jogar').focus();
@@ -559,7 +572,7 @@ function configurarControles() {
           escolher(cartoes.indexOf(ativo));
           return $('nome').focus();
         }
-        return comecarPartida();
+        return comecarPartida(faseEscolhida);
       }
       if (!digitandoNome && e.key.startsWith('Arrow')) {
         e.preventDefault();
