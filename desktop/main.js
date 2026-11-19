@@ -39,7 +39,9 @@ function iniciarServidor() {
 }
 
 app.whenReady().then(async () => {
-  Menu.setApplicationMenu(null); // sem a barra de menus do Windows
+  // Menu escondido só com "Editar": sem ele, os atalhos Ctrl+C / Ctrl+V / Ctrl+X
+  // não funcionam no campo do nome
+  Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'editMenu' }]));
   const porta = await iniciarServidor();
   const janela = new BrowserWindow({
     width: 1280,
@@ -49,6 +51,7 @@ app.whenReady().then(async () => {
     backgroundColor: '#1a1f4d',
     webPreferences: { backgroundThrottling: false },
   });
+  janela.setMenuBarVisibility(false); // o menu existe (para os atalhos), mas não aparece
   janela.maximize();
   janela.loadURL(`http://127.0.0.1:${porta}/index.html`);
   janela.once('ready-to-show', () => janela.show());

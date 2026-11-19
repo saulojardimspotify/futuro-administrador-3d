@@ -162,12 +162,14 @@ function voltarSelecao() {
   HUD.esconder();
   $('tela-selecao').classList.remove('escondido');
   escolher(escolhido);
+  focarCartao();
 }
 
 // "Voltar ao início": volta para a tela de abertura com a foto da faculdade
 function voltarInicio() {
   voltarSelecao();
   $('tela-capa').classList.remove('escondido');
+  $('btn-jogar').focus();
 }
 
 // Troca o cenário (faculdade ou empresa) e a cor do "céu"/neblina conforme a fase
@@ -176,6 +178,20 @@ function aplicarTema() {
   corredor.usarTema(config.tema);
   cena.background.setHex(config.corFundo);
   cena.fog.color.setHex(config.corFundo);
+}
+
+// Mostra uma tela final e já deixa o 1º botão selecionado (para jogar só com o teclado:
+// Enter confirma, setas ↑↓ trocam de botão)
+function mostrarTela(id) {
+  $(id).classList.remove('escondido');
+  const botao = $(id).querySelector('.btn');
+  if (botao) botao.focus();
+}
+
+// Deixa o cartão do personagem escolhido selecionado (as setas trocam de personagem)
+function focarCartao() {
+  const cartao = document.querySelectorAll('.card')[escolhido];
+  if (cartao) cartao.focus();
 }
 
 function esconderTelas() {
@@ -246,6 +262,7 @@ async function comecarPartida(numFase = 1) {
   });
 
   esconderTelas();
+  if (document.activeElement) document.activeElement.blur(); // as teclas agora são do jogo
   HUD.mostrar(def, nome, fase);
   tela = 'jogando';
   Sons.pararArquivos();
@@ -405,7 +422,7 @@ function fimDeJogo() {
     $('fim-ranking').innerHTML = Ranking.html(
       Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: false, fase })
     );
-    $('tela-fim').classList.remove('escondido');
+    mostrarTela('tela-fim');
     HUD.esconder();
     tela = 'fim';
   }, 1200);
@@ -426,7 +443,7 @@ function promover() {
   $('promocao-ranking').innerHTML = Ranking.html(
     Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), promovido: true, fase: 2 })
   );
-  $('tela-promocao').classList.remove('escondido');
+  mostrarTela('tela-promocao');
 }
 
 function irParaAuditorio() {
@@ -444,7 +461,7 @@ function irParaAuditorio() {
       $('vitoria-ranking').innerHTML = Ranking.html(
         Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: true, fase: 1 })
       );
-      $('tela-vitoria').classList.remove('escondido');
+      mostrarTela('tela-vitoria');
     }, real);
     tela = 'auditorio';
     $('fade').classList.remove('ativo');
@@ -491,11 +508,13 @@ function atualizarIconeTela() {
 function fecharCapa() {
   $('tela-capa').classList.add('escondido');
   Sons.iniciar(); // aproveita o toque para já liberar os áudios no celular
+  focarCartao();
 }
 
 function configurarControles() {
   $('btn-som').onclick = alternarSom;
   $('btn-jogar').onclick = fecharCapa;
+  $('btn-jogar').focus(); // Enter ou Espaço já começam
   // Qualidade: HD (bonita) ou Leve (rápida). Fica guardada e o jogo recarrega.
   const bq = $('btn-qualidade');
   bq.textContent = QUALIDADE_ALTA ? 'HD' : 'Leve';
@@ -519,12 +538,53 @@ function configurarControles() {
     $('btn-tela').classList.add('escondido');
   }
   addEventListener('keydown', (e) => {
-    if ((e.key === 'f' || e.key === 'F') && pedirTelaCheia && document.activeElement !== $('nome')) return alternarTelaCheia();
+    const ativo = document.activeElement;
+    const digitandoNome = ativo === $('nome');
+
+    // Tela de abertura: Enter ou Espaço para jogar
     if (!$('tela-capa').classList.contains('escondido')) {
-      if (e.key === 'Enter') fecharCapa();
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fecharCapa();
+      }
       return;
     }
-    if (tela === 'selecao' && e.key === 'Enter') return comecarPartida();
+
+    // Escolha do personagem: setas trocam, Enter confirma; ao digitar, o texto vai para o nome
+    if (tela === 'selecao') {
+      const cartoes = [...document.querySelectorAll('.card')];
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (cartoes.includes(ativo)) {
+          escolher(cartoes.indexOf(ativo));
+          return $('nome').focus();
+        }
+        return comecarPartida();
+      }
+      if (!digitandoNome && e.key.startsWith('Arrow')) {
+        e.preventDefault();
+        const passo = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -3, ArrowDown: 3 }[e.key];
+        escolher((escolhido + passo + cartoes.length) % cartoes.length);
+        return focarCartao();
+      }
+      if (!digitandoNome && e.key.length === 1 && /\p{L}/u.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        $('nome').focus(); // a letra digitada já cai no campo do nome
+        return;
+      }
+      if (digitandoNome && e.key === 'Escape') return focarCartao();
+    }
+
+    // Telas finais: setas ↑↓ (ou ←→) trocam de botão; Enter/Espaço confirmam (botão normal)
+    const painel = ativo && ativo.closest && ativo.closest('.painel-msg');
+    if (painel && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+      const botoes = [...painel.querySelectorAll('.btn')];
+      const passo = e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 1;
+      botoes[(botoes.indexOf(ativo) + passo + botoes.length) % botoes.length].focus();
+      return;
+    }
+
+    if ((e.key === 'f' || e.key === 'F') && pedirTelaCheia && !digitandoNome) return alternarTelaCheia();
     if ((e.key === 'm' || e.key === 'M') && document.activeElement !== $('nome')) return alternarSom();
     if (tela !== 'jogando' || jogo.travado) return;
     if (['ArrowLeft', 'a', 'A'].includes(e.key)) { if (!e.repeat) mover(-1); }

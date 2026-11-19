@@ -69,10 +69,17 @@ h2 { margin: 0 0 8px; font-size: 28px; font-weight: 900; }
   color: #1e2a5a;
   transition: transform 0.15s, border-color 0.15s;
 }
-.card img { width: 100%; aspect-ratio: 4 / 5; object-fit: contain; display: block; }
+/* altura da foto proporcional à tela: o painel inteiro (cartões, nome e botão) cabe sem rolar */
+.card img { width: 100%; height: min(17vh, 160px); object-fit: contain; display: block; }
 .card span { font-size: 16px; font-weight: 900; }
 .card:hover { transform: translateY(-3px); }
 .card.ativo { border-color: #facc15; box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.4); }
+/* contorno amarelo no que está selecionado pelo teclado */
+.card:focus-visible, .btn:focus-visible, .btn-som:focus-visible, input:focus-visible {
+  outline: 4px solid #facc15;
+  outline-offset: 3px;
+}
+.card:focus { outline-color: #facc15; }
 
 label { display: block; margin: 16px 0 6px; font-weight: 800; text-align: left; }
 input {
@@ -188,6 +195,25 @@ input.erro { border-color: #ef4444; animation: tremer 0.3s; }
   opacity: 0; pointer-events: none; transition: opacity 0.8s;
 }
 #fade.ativo { opacity: 1; }
+
+/* Telas baixas (monitor/TV com zoom, notebook pequeno): tudo mais compacto para caber sem rolar */
+@media (max-height: 760px) {
+  .painel-selecao { padding: 12px 18px; }
+  .painel-selecao h1 { font-size: 24px; }
+  .painel-selecao .sub { margin: 2px 0 8px; }
+  .cards { gap: 6px; }
+  .card { padding: 4px 4px 6px; }
+  .card span { font-size: 14px; }
+  label { margin: 8px 0 4px; }
+  input { padding: 8px 12px; }
+  .previa { margin: 4px 0 8px; }
+  .btn { padding: 10px; }
+  .dica { margin-top: 6px; font-size: 12px; }
+}
+@media (max-height: 600px) {
+  .painel-selecao .dica { display: none; }
+  .card img { height: 14vh; }
+}
 
 /* ---------- Celular ---------- */
 @media (max-width: 800px) {
