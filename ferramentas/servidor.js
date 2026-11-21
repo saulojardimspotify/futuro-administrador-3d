@@ -17,7 +17,7 @@ http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
   if (req.method === 'POST' && url.pathname === '/salvar') {
     const nome = path.basename(url.searchParams.get('nome') || '');
-    if (!/^[a-z0-9_-]+\.(glb|jpg)$/i.test(nome)) {
+    if (!/^[a-z0-9_-]+\.(glb|jpg|png)$/i.test(nome)) {
       res.writeHead(400);
       return res.end('nome inválido');
     }

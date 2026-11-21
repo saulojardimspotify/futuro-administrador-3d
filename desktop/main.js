@@ -48,6 +48,7 @@ app.whenReady().then(async () => {
     height: 800,
     show: false,
     title: 'Futuro Administrador',
+    icon: path.join(__dirname, 'jogo', 'img', 'icone.png'), // ícone da janela e da barra de tarefas
     backgroundColor: '#1a1f4d',
     webPreferences: { backgroundThrottling: false },
   });

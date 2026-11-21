@@ -14,7 +14,7 @@
     "appId": "br.isecensa.futuroadministrador",
     "productName": "Futuro Administrador",
     "files": ["main.js", "jogo/**"],
-    "win": { "target": "portable", "signAndEditExecutable": false },
+    "win": { "target": "portable", "signAndEditExecutable": false, "icon": "jogo/img/icone.png" },
     "portable": { "artifactName": "FuturoAdministrador.exe" }
   },
   "devDependencies": {
