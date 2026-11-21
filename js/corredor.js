@@ -15,12 +15,13 @@ class Corredor {
     this.placas = {};
     // Dois cenários: o corredor da faculdade (fase 1) e o da empresa (fase 2).
     // Os dois ficam prontos; só o tema escolhido fica visível.
-    this.temas = { faculdade: [], empresa: [] };
+    this.temas = { faculdade: [], empresa: [], diretoria: [] };
     for (let i = 0; i < NUM_SEGMENTOS; i++) {
       this.temas.faculdade.push(this.criarSegmento());
       this.temas.empresa.push(this.criarSegmentoEmpresa());
+      this.temas.diretoria.push(this.criarSegmentoDiretoria());
     }
-    for (const seg of [...this.temas.faculdade, ...this.temas.empresa]) cena.add(seg);
+    for (const seg of [...this.temas.faculdade, ...this.temas.empresa, ...this.temas.diretoria]) cena.add(seg);
     this.usarTema('faculdade');
   }
 
@@ -34,7 +35,7 @@ class Corredor {
   }
 
   reiniciar() {
-    this.proximaSala = this.tema === 'empresa' ? 201 : 101;
+    this.proximaSala = { faculdade: 101, empresa: 201, diretoria: 3001 }[this.tema];
     this.segmentos.forEach((seg, i) => {
       seg.position.z = TAM_SEGMENTO / 2 - i * TAM_SEGMENTO;
       this.numerarSalas(seg);
@@ -121,6 +122,137 @@ class Corredor {
     this.criarLadoEmpresa(seg, 1);
     this.adicionarSombrasDeCanto(seg);
     return seg;
+  }
+
+  // ---------- Cenário da fase 3: andar da diretoria, com janelões para a cidade ----------
+
+  criarSegmentoDiretoria() {
+    if (!this.carpete) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#2a3140';
+      ctx.fillRect(0, 0, 128, 128);
+      ctx.fillStyle = 'rgba(255,255,255,0.035)';
+      for (let i = 0; i < 400; i++) ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2); // fibras do carpete
+      ctx.strokeStyle = '#353e50';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, 128, 128);
+      this.carpete = new THREE.CanvasTexture(c);
+      this.carpete.wrapS = this.carpete.wrapT = THREE.RepeatWrapping;
+      this.carpete.repeat.set(6, 12);
+      this.carpete.anisotropy = 16;
+      // a cidade: uma versão de dia e outra de noite por cima (a de noite vai aparecendo)
+      this.cidadeDia = new THREE.MeshBasicMaterial({ map: texturaCidade(false), transparent: true, fog: false });
+      this.cidadeNoite = new THREE.MeshBasicMaterial({ map: texturaCidade(true), transparent: true, opacity: 0, fog: false });
+      this.vidro = new THREE.MeshStandardMaterial({ color: 0xbfdcff, transparent: true, opacity: 0.12, roughness: 0.05, metalness: 0.3 });
+    }
+    const seg = new THREE.Group();
+
+    const piso = new THREE.Mesh(
+      new THREE.PlaneGeometry(LARGURA_CORREDOR, TAM_SEGMENTO),
+      new THREE.MeshStandardMaterial({ map: this.carpete, roughness: 0.95 })
+    );
+    piso.rotation.x = -Math.PI / 2;
+    piso.receiveShadow = true;
+    seg.add(piso);
+    for (const x of [-1, 1]) {
+      for (let k = 0; k < 4; k++) {
+        const traco = caixa(0.08, 0.02, 2.2, 0xd4a017); // faixas douradas
+        traco.position.set(x, 0.01, -6 + k * 4);
+        seg.add(traco);
+      }
+    }
+
+    // teto escuro com trilhos de luz
+    const teto = new THREE.Mesh(new THREE.PlaneGeometry(LARGURA_CORREDOR, TAM_SEGMENTO), new THREE.MeshLambertMaterial({ color: 0x2b2f36 }));
+    teto.rotation.x = Math.PI / 2;
+    teto.position.y = ALTURA_CORREDOR;
+    seg.add(teto);
+    for (const x of [-1.6, 1.6]) {
+      const trilho = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, TAM_SEGMENTO - 0.4), new THREE.MeshBasicMaterial({ color: 0xfff7e0 }));
+      trilho.position.set(x, ALTURA_CORREDOR - 0.03, 0);
+      seg.add(trilho);
+    }
+
+    this.criarLadoDiretoria(seg, -1);
+    this.criarLadoDiretoria(seg, 1);
+    return seg;
+  }
+
+  criarLadoDiretoria(seg, lado) {
+    const xParede = (lado * LARGURA_CORREDOR) / 2;
+    const dentro = -lado;
+    const x = (dist) => xParede + dentro * dist;
+
+    // mureta de madeira escura + janelão de vidro do chão ao teto
+    const mureta = caixa(0.25, 0.8, TAM_SEGMENTO, 0x3b2a20);
+    mureta.position.set(x(0.1), 0.4, 0);
+    const corrimao = caixa(0.3, 0.05, TAM_SEGMENTO, 0x9ca3af);
+    corrimao.position.set(x(0.1), 0.82, 0);
+    const vidro = new THREE.Mesh(new THREE.PlaneGeometry(TAM_SEGMENTO, ALTURA_CORREDOR - 0.85), this.vidro);
+    vidro.position.set(x(0.05), 0.85 + (ALTURA_CORREDOR - 0.85) / 2, 0);
+    vidro.rotation.y = dentro * (Math.PI / 2);
+    const viga = caixa(0.3, 0.25, TAM_SEGMENTO, 0x1f2937);
+    viga.position.set(x(0.1), ALTURA_CORREDOR - 0.12, 0);
+    seg.add(mureta, corrimao, vidro, viga);
+    for (const z of [-6, -2, 2, 6]) {
+      const montante = caixa(0.1, ALTURA_CORREDOR, 0.1, 0x1f2937); // caixilhos do vidro
+      montante.position.set(x(0.05), ALTURA_CORREDOR / 2, z);
+      seg.add(montante);
+    }
+
+    // a cidade lá fora (o prédio é alto: os outros prédios aparecem até embaixo)
+    for (const mat of [this.cidadeDia, this.cidadeNoite]) {
+      const cidade = new THREE.Mesh(new THREE.PlaneGeometry(TAM_SEGMENTO, 12), mat);
+      cidade.position.set(xParede + lado * (mat === this.cidadeNoite ? 7.9 : 8), 1.5, 0);
+      cidade.rotation.y = dentro * (Math.PI / 2);
+      seg.add(cidade);
+    }
+
+    // pilar com TV mostrando gráfico animado
+    const pilar = caixa(0.6, ALTURA_CORREDOR, 0.6, 0xe5e7eb);
+    pilar.position.set(x(0.3), ALTURA_CORREDOR / 2, -2);
+    const tv = caixa(0.08, 0.8, 1.3, 0x111827);
+    tv.position.set(x(0.64), 2.3, -2);
+    const tela = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.7), new THREE.MeshBasicMaterial({ map: texturaTelaGrafico() }));
+    tela.position.set(x(0.685), 2.3, -2);
+    tela.rotation.y = dentro * (Math.PI / 2);
+    seg.add(pilar, tv, tela);
+    const placa = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.3), new THREE.MeshBasicMaterial());
+    placa.position.set(x(0.605), 3.4, -2);
+    placa.rotation.y = dentro * (Math.PI / 2);
+    seg.add(placa);
+    seg.userData[lado < 0 ? 'placaE' : 'placaD'] = placa;
+
+    // sofá de recepção de frente para o corredor
+    const assento = caixa(0.8, 0.45, 2.0, 0x1f2937);
+    assento.position.set(x(0.6), 0.225, 3.5);
+    const encosto = caixa(0.25, 0.75, 2.0, 0x1f2937);
+    encosto.position.set(x(0.32), 0.6, 3.5);
+    const almofada = caixa(0.12, 0.35, 0.45, 0xb45309);
+    almofada.position.set(x(0.5), 0.6, 2.9);
+    seg.add(assento, encosto, almofada);
+
+    // vaso alto com planta
+    const vaso = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 0.9, 14), new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.3 }));
+    vaso.position.set(x(0.45), 0.45, 6.6);
+    seg.add(vaso);
+    [[0, 1.2, 0.35], [0.12, 1.55, 0.25], [-0.1, 1.5, 0.25]].forEach(([dx, y, r]) => {
+      const folha = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), new THREE.MeshLambertMaterial({ color: 0x2f9e44, flatShading: true }));
+      folha.position.set(x(0.45) + dx, y, 6.6);
+      seg.add(folha);
+    });
+  }
+
+  // O dia passando: p = 0 (manhã) até 1 (noite). Acende a cidade e escurece o céu.
+  ajustarHorario(p, cena) {
+    if (!this.cidadeNoite) return;
+    const noite = Math.min(1, Math.max(0, (p - 0.45) / 0.45));
+    this.cidadeNoite.opacity = noite;
+    this.cidadeDia.opacity = 1 - noite * 0.7;
+    corDoCeu(p, cena.background);
+    cena.fog.color.copy(cena.background);
   }
 
   // ---------- Detalhes de realismo usados pelos dois cenários ----------

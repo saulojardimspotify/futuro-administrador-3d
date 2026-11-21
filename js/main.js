@@ -112,6 +112,8 @@ function montarSelecao() {
   $('btn-denovo').onclick = () => novoJogador(1);
   $('btn-fase2').onclick = () => comecarPartida(2);
   $('btn-denovo2').onclick = () => novoJogador(2);
+  $('btn-fase3').onclick = () => comecarPartida(3);
+  $('btn-denovo3').onclick = () => novoJogador(3);
   document.querySelectorAll('.btn-inicio').forEach((b) => (b.onclick = voltarInicio));
 
   escolher(0);
@@ -208,7 +210,7 @@ function focarCartao() {
 }
 
 function esconderTelas() {
-  ['tela-selecao', 'tela-fim', 'tela-vitoria', 'tela-promocao'].forEach((id) => $(id).classList.add('escondido'));
+  ['tela-selecao', 'tela-fim', 'tela-vitoria', 'tela-promocao', 'tela-conselho', 'tela-diretor'].forEach((id) => $(id).classList.add('escondido'));
 }
 
 // ---------- Partida ----------
@@ -242,7 +244,8 @@ async function comecarPartida(numFase = 1) {
       // figurantes realistas da fase (dançarinos, reunião, chefe); só no computador
       if (Modelos.usarFigurantes) {
         mostrarCarregando('Carregando colegas...');
-        await Modelos.preparar(fase === 2 ? [...FIGURANTES, 'chefe'] : FIGURANTES);
+        await Modelos.preparar(fase === 3 ? [...FIGURANTES, 'cliente'] : fase === 2 ? [...FIGURANTES, 'chefe'] : FIGURANTES);
+        if (fase === 3) Modelos.preparar(['ceo']); // para a reunião com o conselho (em segundo plano)
         Modelos.aquecer(renderizador, cena, camera); // evita o "soluço" quando o 1º figurante aparece
         if (fase === 1) Modelos.preparar(['tulio']); // para a formatura (em segundo plano)
       }
@@ -272,11 +275,13 @@ async function comecarPartida(numFase = 1) {
   Object.assign(jogo, {
     z: 0, x: 0, y: 0, vy: 0, faixa: 0, vel: 10, tempo: 0,
     pontos: 0, vidas: 3, invencivel: 0, final: false, zPorta: 0, travado: false, abaixado: 0,
+    caixa: 100, combo: 0, foco: 0, escudo: false, ima: 0, // fase 3
   });
 
   esconderTelas();
   if (document.activeElement) document.activeElement.blur(); // as teclas agora são do jogo
   HUD.mostrar(def, nome, fase);
+  limparEfeitosFase3();
   tela = 'jogando';
   Sons.pararArquivos();
   Sons.iniciar();
@@ -319,7 +324,8 @@ function atualizarJogo(dt) {
   // A fase 2 já começa bem mais rápida (veja FASES em fase2.js).
   const [inicial, porSegundo, porItem, maxima] = FASES[fase].vel;
   jogo.vel = Math.min(inicial + jogo.tempo * porSegundo + itens.coletadas.length * porItem, maxima);
-  jogo.z -= jogo.vel * dt;
+  // poder "Foco total": o mundo anda em câmera lenta
+  jogo.z -= jogo.vel * (jogo.foco > 0 ? dt * 0.55 : dt);
 
   // Desliza suavemente até a faixa escolhida
   const alvoX = jogo.faixa * LARGURA_FAIXA;
@@ -365,22 +371,60 @@ function atualizarJogo(dt) {
   jogo.pontos += jogo.vel * dt;
   corredor.atualizar(jogo.z);
 
+  if (fase === 3) {
+    atualizarFase3(dt);
+    if (jogo.caixa <= 0) return fimDeJogo('caixa');
+  }
+
   for (const ev of itens.atualizar(jogo, tempoTotal)) {
     if (ev.tipo === 'livro') {
-      jogo.pontos += 100;
+      // combo: cada 4 itens seguidos sem bater aumentam o multiplicador (até x4)
+      const multiplicador = 1 + Math.min(3, Math.floor(jogo.combo / 4));
+      jogo.combo++;
+      jogo.pontos += 100 * multiplicador;
+      if (fase === 3) {
+        jogo.caixa = Math.min(100, jogo.caixa + 7);
+        HUD.combo(1 + Math.min(3, Math.floor(jogo.combo / 4)));
+      }
       HUD.disciplinas(itens.coletadas);
-      HUD.aviso(`+ ${ev.nome}`, 'bom');
+      HUD.aviso(`+ ${ev.nome}${multiplicador > 1 ? ` (x${multiplicador})` : ''}`, 'bom');
       Sons.livro();
     } else if (ev.tipo === 'cafe') {
       jogo.vidas = Math.min(3, jogo.vidas + 1);
       HUD.vidas(jogo.vidas);
       HUD.aviso('☕ Café! +1 vida', 'bom');
       Sons.cafe();
+    } else if (ev.tipo === 'poder') {
+      ativarPoder(ev.poder);
+    } else if (ev.tipo === 'portao') {
+      if (ev.certo) {
+        jogo.caixa = Math.min(100, jogo.caixa + 15);
+        jogo.pontos += 300;
+        HUD.aviso('✅ Decisão certa! +caixa', 'bom');
+        Sons.todasDisciplinas();
+      } else {
+        jogo.caixa -= 15;
+        jogo.combo = 0;
+        HUD.combo(0);
+        HUD.aviso(`❌ Decisão errada! O certo era: ${ev.resposta}`, 'ruim');
+        Sons.batida();
+      }
     } else if (jogo.invencivel <= 0) {
+      jogo.combo = 0;
+      HUD.combo(0);
+      if (jogo.escudo) {
+        // poder "Equipe": a batida não tira vida
+        jogo.escudo = false;
+        jogo.invencivel = 1;
+        HUD.aviso('🤝 A equipe te protegeu!', 'bom');
+        Sons.cafe();
+        continue;
+      }
       Sons.batida();
       jogo.vidas--;
       jogo.invencivel = FASES[fase].invencivel;
       tremor = 0.4;
+      if (fase === 3) jogo.caixa -= 10;
       HUD.vidas(jogo.vidas);
       HUD.aviso(`${ev.nome}! −1 vida`, 'ruim');
       if (jogo.vidas <= 0) return fimDeJogo();
@@ -389,6 +433,8 @@ function atualizarJogo(dt) {
 
   // Fase 2: bateu todas as metas? Promoção!
   if (fase === 2 && itens.coletadas.length >= FASES[2].meta) return promover();
+  // Fase 3: juntou todas as soluções? Reunião com o conselho!
+  if (fase === 3 && itens.coletadas.length >= FASES[3].meta) return irParaConselho();
 
   // Fase 1: pegou todas as disciplinas? Aparece a porta do auditório
   if (fase === 1 && !jogo.final && itens.coletadas.length >= META_DISCIPLINAS) {
@@ -422,14 +468,17 @@ function posicionarCamera(dt) {
   sol.target.position.set(0, 0, jogo.z - 6);
 }
 
-function fimDeJogo() {
+function fimDeJogo(motivo) {
   tela = 'caindo';
   jogador.visible = true;
+  limparEfeitosFase3();
   Sons.pararMusica();
   Sons.gameOver();
   setTimeout(() => {
     const config = FASES[fase];
-    $('fim-titulo').textContent = fase === 2 ? '😢 Você foi desligado do estágio' : '😢 Você trancou o curso';
+    $('fim-titulo').textContent = motivo === 'caixa' ? '💸 O caixa zerou: a empresa quebrou!'
+      : fase === 3 ? '😢 Você foi demitido da gerência'
+      : fase === 2 ? '😢 Você foi desligado do estágio' : '😢 Você trancou o curso';
     $('fim-texto').innerHTML =
       `Você conquistou <b>${itens.coletadas.length} de ${config.meta}</b> ${config.unidade}<br>e fez <b>${Math.floor(jogo.pontos)}</b> pontos.`;
     $('fim-ranking').innerHTML = Ranking.html(
@@ -457,6 +506,150 @@ function promover() {
     Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), promovido: true, fase: 2 })
   );
   mostrarTela('tela-promocao');
+}
+
+// ---------- Fase 3: caixa, poderes, dia passando, portões ----------
+
+let bolhaEquipe = null; // a "bolha" verde do poder Equipe
+
+function atualizarFase3(dt) {
+  // o caixa da empresa desce sozinho o tempo todo
+  jogo.caixa -= dt * 1.1;
+  HUD.caixa(jogo.caixa);
+
+  // o dia passa conforme as soluções: manhã → pôr do sol → noite
+  corredor.ajustarHorario(itens.coletadas.length / FASES[3].meta, cena);
+  desenharTelaGrafico(tempoTotal);
+
+  // pergunta do portão que está chegando
+  const portao = itens.proximoPortao(jogo);
+  HUD.pergunta(portao ? portao.userData : null);
+
+  // poderes com tempo
+  jogo.foco = Math.max(0, jogo.foco - dt);
+  jogo.ima = Math.max(0, jogo.ima - dt);
+  renderizador.domElement.classList.toggle('foco', jogo.foco > 0);
+  const ativos = [];
+  if (jogo.foco > 0) ativos.push(`⏳ Foco total ${Math.ceil(jogo.foco)}s`);
+  if (jogo.ima > 0) ativos.push(`🧲 Reunião produtiva ${Math.ceil(jogo.ima)}s`);
+  if (jogo.escudo) ativos.push('🤝 Equipe protegendo');
+  HUD.poder(ativos.length ? ativos.join('   ') : null);
+
+  if (!bolhaEquipe) {
+    bolhaEquipe = new THREE.Mesh(
+      new THREE.SphereGeometry(1.1, 24, 16),
+      new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.18, depthWrite: false })
+    );
+    cena.add(bolhaEquipe);
+  }
+  bolhaEquipe.visible = jogo.escudo;
+  bolhaEquipe.position.set(jogo.x, jogo.y + 0.95, jogo.z);
+  bolhaEquipe.scale.setScalar(1 + Math.sin(tempoTotal * 6) * 0.04);
+}
+
+function ativarPoder(poder) {
+  if (poder === 'foco') jogo.foco = 5;
+  if (poder === 'ima') jogo.ima = 6;
+  if (poder === 'equipe') jogo.escudo = true;
+  const p = PODERES[poder];
+  HUD.aviso(`${p.icone} ${p.nome}: ${p.explica}!`, 'bom');
+  Sons.todasDisciplinas();
+}
+
+function limparEfeitosFase3() {
+  renderizador.domElement.classList.remove('foco');
+  if (bolhaEquipe) bolhaEquipe.visible = false;
+  HUD.pergunta(null);
+  HUD.poder(null);
+}
+
+// ---------- Fase 3: reunião com o conselho ----------
+
+let quiz = null;
+
+function irParaConselho() {
+  tela = 'transicao';
+  limparEfeitosFase3();
+  Sons.pararMusica();
+  Sons.todasDisciplinas();
+  $('fade').classList.add('ativo');
+  const def = PERSONAGENS[escolhido];
+  setTimeout(() => {
+    HUD.esconder();
+    const montar = (real) => {
+      auditorio = new Conselho(def, real);
+      tela = 'conselho';
+      $('fade').classList.remove('ativo');
+      quiz = { perguntas: [0, 1, 2].map(() => sortearPergunta(itens.perguntasUsadas)), atual: 0, acertos: 0 };
+      setTimeout(mostrarPerguntaConselho, 1200);
+    };
+    if (jogador.userData.real) {
+      Promise.all([Modelos.criar(def), Modelos.preparar(['ceo', ...FIGURANTES])]).then(([real]) => montar(real), () => montar(null));
+    } else montar(null);
+  }, 900);
+}
+
+function mostrarPerguntaConselho() {
+  const q = quiz.perguntas[quiz.atual];
+  $('conselho-progresso').textContent = `Pergunta ${quiz.atual + 1} de 3 · acerte pelo menos 2 para virar Diretor`;
+  $('conselho-pergunta').textContent = q.pergunta;
+  const caixaOpcoes = $('conselho-opcoes');
+  caixaOpcoes.innerHTML = '';
+  q.respostas.forEach((resposta, i) => {
+    const botao = document.createElement('button');
+    botao.className = 'btn' + (i ? ' secundario' : '');
+    botao.textContent = `${'ABC'[i]}) ${resposta}`;
+    botao.onclick = () => responderConselho(i);
+    caixaOpcoes.appendChild(botao);
+  });
+  mostrarTela('tela-conselho');
+}
+
+function responderConselho(escolha) {
+  const q = quiz.perguntas[quiz.atual];
+  const botoes = [...$('conselho-opcoes').querySelectorAll('.btn')];
+  if (botoes.some((b) => b.disabled)) return;
+  botoes.forEach((b) => (b.disabled = true));
+  botoes[q.certa].classList.add('certo');
+  if (escolha === q.certa) {
+    quiz.acertos++;
+    Sons.livro();
+  } else {
+    botoes[escolha].classList.add('errado');
+    Sons.batida();
+  }
+  setTimeout(() => {
+    quiz.atual++;
+    if (quiz.atual < 3) return mostrarPerguntaConselho();
+    $('tela-conselho').classList.add('escondido');
+    finalizarConselho(quiz.acertos >= 2);
+  }, 1400);
+}
+
+function finalizarConselho(aprovado) {
+  const def = PERSONAGENS[escolhido];
+  auditorio.resultado(aprovado);
+  jogo.pontos += quiz.acertos * 500;
+  if (!aprovado) {
+    Sons.gameOver();
+    $('fim-titulo').textContent = '😢 O conselho não aprovou o seu plano';
+    $('fim-texto').innerHTML = `Você acertou <b>${quiz.acertos} de 3</b> perguntas do conselho<br>e fez <b>${Math.floor(jogo.pontos)}</b> pontos.`;
+    $('fim-ranking').innerHTML = Ranking.html(Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), fase: 3 }));
+    tela = 'fim';
+    return setTimeout(() => mostrarTela('tela-fim'), 800);
+  }
+  Sons.tocarArquivo('final2', 1);
+  Sons.tocarArquivo('applause', 0.8);
+  setTimeout(() => {
+    $('diretor-titulo').textContent = def.mulher ? 'Você é a nova Diretora!' : 'Você é o novo Diretor!';
+    $('diretor-texto').innerHTML =
+      `Parabéns, <b>${escaparHtml(nomeJogador)}</b>!<br>Você salvou a empresa e convenceu o conselho (${quiz.acertos} de 3).<br>Pontuação: <b>${Math.floor(jogo.pontos)}</b>`;
+    $('diretor-ranking').innerHTML = Ranking.html(
+      Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), diretor: true, fase: 3 })
+    );
+    tela = 'fim';
+    mostrarTela('tela-diretor');
+  }, 2500);
 }
 
 function irParaAuditorio() {

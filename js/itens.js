@@ -374,6 +374,8 @@ class Itens {
     this.porta = null;
     this.proximoZ = -35;
     this.zUltimaFileira = undefined;
+    this.contadorFileiras = 0;
+    this.perguntasUsadas = [];
     this.coletadas = [];
     this.modoFinal = false;
   }
@@ -397,6 +399,14 @@ class Itens {
   // Se o jogador tem só 1 vida, às vezes aparece também uma xícara de café.
   gerarFileira(z, jogo) {
     const fase = FASES[this.fase];
+    // Fase 3: de tempos em tempos, uma fileira é um portão de decisão (sem obstáculos)
+    this.contadorFileiras = (this.contadorFileiras || 0) + 1;
+    if (fase.portaoACada && this.contadorFileiras % fase.portaoACada === 0) {
+      const q = sortearPergunta(this.perguntasUsadas);
+      this.zUltimaFileira = z;
+      this.adicionar(criarPortao(q), 0, z, { tipo: 'portao', pergunta: q.pergunta, respostas: q.respostas, certa: q.certa });
+      return;
+    }
     const faixas = [-1, 0, 1].sort(() => Math.random() - 0.5);
     const qtd = Math.random() < fase.chanceDois ? 2 : 1;
     const tipos = Object.keys(fase.obstaculos);
@@ -416,8 +426,25 @@ class Itens {
     }
     const temCafe = this.lista.some((i) => i.userData.tipo === 'cafe');
     if (jogo.vidas === 1 && livres.length && !temCafe && Math.random() < fase.chanceCafe) {
-      this.adicionar(criarCafe(), livres[0], z, { tipo: 'cafe' });
+      this.adicionar(criarCafe(), livres.shift(), z, { tipo: 'cafe' });
     }
+    // Fase 3: poderes (foco, equipe, ímã) numa faixa livre
+    if (fase.chancePoder && livres.length && Math.random() < fase.chancePoder) {
+      const tipos = Object.keys(PODERES);
+      const poder = tipos[Math.floor(Math.random() * tipos.length)];
+      this.adicionar(criarPoder(poder), livres.shift(), z, { tipo: 'poder', poder });
+    }
+  }
+
+  // O portão de decisão mais próximo à frente (para mostrar a pergunta na tela)
+  proximoPortao(jogo) {
+    let melhor = null;
+    for (const item of this.lista) {
+      const d = item.userData;
+      const distancia = jogo.z - item.position.z;
+      if (d.tipo === 'portao' && !d.usado && distancia > 0 && distancia < 75 && (!melhor || distancia < jogo.z - melhor.position.z)) melhor = item;
+    }
+    return melhor;
   }
 
   // Chamado a cada quadro. Devolve a lista do que o jogador pegou/bateu.
@@ -460,9 +487,26 @@ class Itens {
         });
       }
 
+      // ímã (poder "Reunião produtiva"): soluções próximas vêm para a faixa do jogador
+      if (jogo.ima > 0 && d.tipo === 'livro' && jogo.z - item.position.z < 30) {
+        item.position.x += (jogo.x - item.position.x) * 0.12;
+      }
+
       const dz = Math.abs(item.position.z - jogo.z);
       const dx = Math.abs(item.position.x - jogo.x);
       if (!d.usado && dz < 0.6) {
+        // portão: a resposta é a faixa por onde o jogador passou
+        if (d.tipo === 'portao') {
+          d.usado = true;
+          const faixaEscolhida = Math.round(jogo.x / 2) + 1; // 0 = A (esquerda), 1 = B, 2 = C
+          eventos.push({ tipo: 'portao', certo: faixaEscolhida === d.certa, resposta: d.respostas[d.certa] });
+          continue;
+        }
+        if (d.tipo === 'poder' && dx < 0.9) {
+          eventos.push({ tipo: 'poder', poder: d.poder });
+          this.remover(item);
+          continue;
+        }
         if (d.tipo === 'cafe' && dx < 0.9) {
           eventos.push({ tipo: 'cafe' });
           this.remover(item);

@@ -4,7 +4,8 @@
 
 const ALTURA_BONECO = 1.85; // altura do boneco no jogo (os modelos vêm em centímetros)
 const ANIMACOES = ['correr', 'pular', 'deslizar', 'comemorar', 'parado',
-  'dancar', 'aplaudir-sentado', 'conversar', 'bravo', 'andar'];
+  'dancar', 'aplaudir-sentado', 'conversar', 'bravo', 'andar',
+  'gritar', 'sentado-conversando', 'sentado-parado', 'pulo-correndo']; // fase 3
 // figurantes (festa, reunião, plateia) usam os modelos mais leves
 const FIGURANTES = ['isabella', 'mariaflor', 'valentina'];
 const VERSAO_MODELOS = 1;

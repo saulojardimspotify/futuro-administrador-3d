@@ -37,6 +37,7 @@ const Cenario = {
     // 3) Móveis 3D (baixam em segundo plano; o jogo não espera por eles)
     const moveis = await this.carregarMoveis();
     for (const [tema, segmentos] of Object.entries(corredor.temas)) {
+      if (tema === 'diretoria') continue; // a diretoria (fase 3) já vem mobiliada pelo corredor
       segmentos.forEach((seg) => (tema === 'empresa' ? this.mobiliarEmpresa(seg, moveis) : this.mobiliarFaculdade(seg, moveis)));
     }
   },

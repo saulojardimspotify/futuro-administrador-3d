@@ -8,7 +8,12 @@ const HUD = {
     const config = FASES[fase];
     this.total = config.meta;
     this.unidade = config.unidade;
-    const titulo = fase === 2 ? (def.mulher ? 'Estagiária' : 'Estagiário') : 'Futuro Administrador';
+    const titulo = fase === 3 ? (def.mulher ? 'Gerente' : 'Gerente')
+      : fase === 2 ? (def.mulher ? 'Estagiária' : 'Estagiário') : 'Futuro Administrador';
+    this.el('hud-caixa-bloco').classList.toggle('escondido', fase !== 3);
+    this.combo(0);
+    this.poder(null);
+    this.pergunta(null);
     this.el('hud-avatar').src = def.retratoRosto;
     this.el('hud-nome').textContent = `${titulo} ${nome}`;
     this.el('hud-curso').textContent = config.curso;
@@ -44,6 +49,39 @@ const HUD = {
       .reverse()
       .map((d) => `<li>✔ ${d}</li>`)
       .join('');
+  },
+
+  // ---------- Fase 3 ----------
+
+  // Caixa da empresa (0 a 100): verde → amarelo → vermelho
+  caixa(valor) {
+    const barra = this.el('hud-caixa');
+    barra.style.width = `${Math.max(0, Math.min(100, valor))}%`;
+    barra.style.background = valor > 50 ? 'linear-gradient(#4ade80, #16a34a)' : valor > 25 ? 'linear-gradient(#fde047, #ca8a04)' : 'linear-gradient(#f87171, #dc2626)';
+  },
+
+  combo(multiplicador) {
+    const el = this.el('hud-combo');
+    el.textContent = multiplicador > 1 ? `🔥 COMBO x${multiplicador}` : '';
+    el.classList.toggle('pulsar', multiplicador > 1);
+  },
+
+  // Poder ativo com o tempo restante (ou null para esconder)
+  poder(texto) {
+    const el = this.el('hud-poder');
+    el.classList.toggle('escondido', !texto);
+    if (texto) el.textContent = texto;
+  },
+
+  // Pergunta do portão de decisão que está chegando (ou null para esconder)
+  pergunta(q) {
+    const el = this.el('hud-pergunta');
+    el.classList.toggle('escondido', !q);
+    if (!q || el.dataset.atual === q.pergunta) return;
+    el.dataset.atual = q.pergunta;
+    el.innerHTML = `<div class="pergunta-titulo">🚪 DECISÃO: passe pelo portão certo!</div>
+      <div class="pergunta-texto">${q.pergunta}</div>
+      <div class="pergunta-opcoes">${q.respostas.map((r, i) => `<span><b>${'ABC'[i]}</b> ${r}</span>`).join('')}</div>`;
   },
 
   aviso(texto, tipo) {

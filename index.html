@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Futuro Administrador</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=40">
+  <link rel="stylesheet" href="style.css?v=42">
 </head>
 <body>
   <!-- Aqui o Three.js desenha o mundo 3D -->
@@ -14,7 +14,7 @@
   <!-- Tela de abertura: foto da faculdade + logo -->
   <div id="tela-capa" class="tela capa">
     <div class="painel capa-conteudo">
-      <img src="img/logo-ise.png?v=40" class="capa-logo" alt="Logo ISECENSA">
+      <img src="img/logo-ise.png?v=42" class="capa-logo" alt="Logo ISECENSA">
       <h1>Futuro Administrador</h1>
       <p class="sub">Curso de Administração · ISECENSA</p>
       <button id="btn-jogar" class="btn">Jogar ▶</button>
@@ -24,7 +24,7 @@
   <!-- Tela 1: escolha do personagem -->
   <div id="tela-selecao" class="tela">
     <div class="painel painel-selecao">
-      <h1><img src="img/logo-ise.png?v=40" class="logo-mini" alt="Logo ISECENSA"> Futuro Administrador</h1>
+      <h1><img src="img/logo-ise.png?v=42" class="logo-mini" alt="Logo ISECENSA"> Futuro Administrador</h1>
       <p class="sub">Escolha seu personagem</p>
       <div id="cards" class="cards"></div>
       <label for="nome">Seu nome</label>
@@ -46,7 +46,15 @@
       <div id="hud-vidas" class="vidas"></div>
       <div class="hud-rotulo">PONTOS</div>
       <div id="hud-pontos" class="pontos">0</div>
+      <div id="hud-combo" class="hud-combo"></div>
+      <!-- fase 3: caixa da empresa -->
+      <div id="hud-caixa-bloco" class="escondido">
+        <div class="hud-rotulo">💰 CAIXA DA EMPRESA</div>
+        <div class="barra barra-caixa"><div id="hud-caixa" class="barra-cheia"></div></div>
+      </div>
     </div>
+    <div id="hud-poder" class="hud-poder escondido"></div>
+    <div id="hud-pergunta" class="painel hud-pergunta escondido"></div>
     <div class="painel hud-dir">
       <div id="hud-titulo" class="hud-titulo">🎓 Progresso acadêmico</div>
       <div class="barra"><div id="hud-barra" class="barra-cheia"></div><span id="hud-progresso"></span></div>
@@ -84,7 +92,29 @@
       <h2>🏆 <span id="promocao-titulo">Promovido!</span></h2>
       <p id="promocao-texto"></p>
       <div id="promocao-ranking"></div>
-      <button id="btn-denovo2" class="btn">Jogar de novo a fase 2</button>
+      <button id="btn-fase3" class="btn">Fase 3: Gerente ▶</button>
+      <button id="btn-denovo2" class="btn secundario">Jogar de novo a fase 2</button>
+      <button class="btn secundario btn-inicio">Voltar ao início</button>
+    </div>
+  </div>
+
+  <!-- Fase 3: perguntas do conselho (a cena 3D aparece atrás) -->
+  <div id="tela-conselho" class="tela escondido">
+    <div class="painel painel-msg painel-conselho">
+      <h2>🏛️ Reunião com o Conselho</h2>
+      <p id="conselho-progresso" class="conselho-progresso"></p>
+      <p id="conselho-pergunta" class="conselho-pergunta"></p>
+      <div id="conselho-opcoes"></div>
+    </div>
+  </div>
+
+  <!-- Vitória da fase 3 (diretor) -->
+  <div id="tela-diretor" class="tela escondido">
+    <div class="painel painel-msg">
+      <h2>🏢 <span id="diretor-titulo">Você é o novo Diretor!</span></h2>
+      <p id="diretor-texto"></p>
+      <div id="diretor-ranking"></div>
+      <button id="btn-denovo3" class="btn">Jogar de novo a fase 3</button>
       <button class="btn secundario btn-inicio">Voltar ao início</button>
     </div>
   </div>
@@ -104,18 +134,20 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
-  <script src="js/util.js?v=40"></script>
-  <script src="js/sons.js?v=40"></script>
-  <script src="js/fotos.js?v=40"></script>
-  <script src="js/personagens.js?v=40"></script>
-  <script src="js/modelos.js?v=40"></script>
-  <script src="js/corredor.js?v=40"></script>
-  <script src="js/cenario.js?v=40"></script>
-  <script src="js/itens.js?v=40"></script>
-  <script src="js/fase2.js?v=40"></script>
-  <script src="js/hud.js?v=40"></script>
-  <script src="js/ranking.js?v=40"></script>
-  <script src="js/auditorio.js?v=40"></script>
-  <script src="js/main.js?v=40"></script>
+  <script src="js/util.js?v=42"></script>
+  <script src="js/sons.js?v=42"></script>
+  <script src="js/fotos.js?v=42"></script>
+  <script src="js/personagens.js?v=42"></script>
+  <script src="js/modelos.js?v=42"></script>
+  <script src="js/corredor.js?v=42"></script>
+  <script src="js/cenario.js?v=42"></script>
+  <script src="js/itens.js?v=42"></script>
+  <script src="js/fase2.js?v=42"></script>
+  <script src="js/fase3.js?v=42"></script>
+  <script src="js/hud.js?v=42"></script>
+  <script src="js/ranking.js?v=42"></script>
+  <script src="js/auditorio.js?v=42"></script>
+  <script src="js/conselho.js?v=42"></script>
+  <script src="js/main.js?v=42"></script>
 </body>
 </html>

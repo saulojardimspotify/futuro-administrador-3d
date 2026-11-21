@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Conversor FBX → GLB</title>
+<style>body{font:14px Arial;background:#222;color:#eee;margin:8px} #fotos{display:flex;flex-wrap:wrap} #log{white-space:pre-wrap}</style>
+</head>
+<body>
+<div id="fotos"></div>
+<div id="log"></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+<script>
+// Converte os FBX do Mixamo em GLB leves para o jogo.
+// Uso: abra http://localhost:8095/ferramentas/conversor.html (com ferramentas/servidor.js rodando)
+// e chame, no console: converterPersonagem('cliente', 'cliente') e converterAnimacao('gritar', 'gritar').
+const log = (t) => (document.getElementById('log').textContent += t + '\n');
+const PASTA_ANIMACOES = '/modelos/' + encodeURIComponent('animações') + '/';
+
+// Padroniza os ossos ("mixamorig7Hips" → "Hips") e faz todas as partes usarem o mesmo esqueleto
+const limparNome = (n) => n.replace(/^mixamorig\d*:?/, '');
+function normalizar(obj) {
+  const mapa = {};
+  obj.traverse((o) => {
+    if (o.isBone) {
+      o.name = limparNome(o.name);
+      if (!mapa[o.name]) mapa[o.name] = o;
+    }
+  });
+  obj.traverse((o) => {
+    if (o.isSkinnedMesh) o.bind(new THREE.Skeleton(o.skeleton.bones.map((b) => mapa[b.name] || b), o.skeleton.boneInverses), o.bindMatrix);
+  });
+  obj.animations.forEach((a) => a.tracks.forEach((t) => (t.name = limparNome(t.name))));
+}
+
+// Carrega o FBX e espera as texturas (que chegam depois) terminarem
+async function carregar(url) {
+  const obj = await new THREE.FBXLoader().loadAsync(url);
+  const texturas = [];
+  obj.traverse((o) => {
+    if (o.isMesh) [].concat(o.material).forEach((m) => { for (const k in m) if (m[k] && m[k].isTexture) texturas.push(m[k]); });
+  });
+  for (let i = 0; i < 200 && texturas.some((t) => !t.image || !t.image.width); i++) await new Promise((r) => setTimeout(r, 50));
+  normalizar(obj);
+  return obj;
+}
+
+// Reduz uma textura (sem transparência vira JPEG, bem menor)
+function reduzir(textura, tamanho, comAlfa) {
+  if (!textura || !textura.image) return null;
+  const img = textura.image;
+  const escala = Math.min(1, tamanho / Math.max(img.width, img.height));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(img.width * escala));
+  c.height = Math.max(1, Math.round(img.height * escala));
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  const t = new THREE.Texture(c);
+  t.format = comAlfa ? THREE.RGBAFormat : THREE.RGBFormat;
+  t.flipY = textura.flipY;
+  t.needsUpdate = true;
+  return t;
+}
+
+const exportar = (obj, animacoes) => new Promise((ok) =>
+  new THREE.GLTFExporter().parse(obj, ok, { binary: true, animations: animacoes || [], onlyVisible: true }));
+
+async function salvar(nome, buffer) {
+  const r = await fetch('/salvar?nome=' + nome, { method: 'POST', body: buffer });
+  log(`${nome}: ${(buffer.byteLength / 1048576).toFixed(2)} MB (${await r.text()})`);
+  return buffer.byteLength;
+}
+
+// Personagem: texturas reduzidas, materiais padrão e pesos dos ossos em 1 byte
+async function converterPersonagem(arquivoFbx, nome, tamanho = 1024) {
+  const obj = await carregar('/modelos/personagens/' + arquivoFbx + '.fbx');
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    const trocar = (m) => {
+      const alfa = m.transparent || m.alphaTest > 0 || /hair|lash|brow/i.test(m.name);
+      return new THREE.MeshStandardMaterial({
+        name: m.name, color: m.color, roughness: 0.75, metalness: 0,
+        map: reduzir(m.map, tamanho, alfa), normalMap: reduzir(m.normalMap, tamanho / 2, false),
+        transparent: m.transparent, alphaTest: alfa ? 0.4 : 0, side: m.side,
+      });
+    };
+    o.material = Array.isArray(o.material) ? o.material.map(trocar) : trocar(o.material);
+    const g = o.geometry;
+    const peso = g.attributes.skinWeight;
+    if (peso) {
+      const novo = new Uint8Array(peso.count * 4);
+      for (let i = 0; i < peso.count; i++) {
+        const w = [peso.getX(i), peso.getY(i), peso.getZ(i), peso.getW(i)];
+        const soma = w.reduce((a, b) => a + b, 0) || 1;
+        const q = w.map((x) => Math.round((x / soma) * 255));
+        const maior = q.indexOf(Math.max(...q));
+        q[maior] += 255 - q.reduce((a, b) => a + b, 0); // a soma fica 255 (sem a "linha preta")
+        novo.set(q, i * 4);
+      }
+      g.setAttribute('skinWeight', new THREE.BufferAttribute(novo, 4, true));
+    }
+    const ossos = g.attributes.skinIndex;
+    if (ossos && !(ossos.array instanceof Uint16Array)) g.setAttribute('skinIndex', new THREE.BufferAttribute(Uint16Array.from(ossos.array), 4));
+    g.deleteAttribute('color');
+    g.deleteAttribute('uv2');
+  });
+  foto(obj, nome);
+  return salvar(nome + '.glb', await exportar(obj, []));
+}
+
+// Animação: só o esqueleto e o movimento
+async function converterAnimacao(arquivoFbx, nome) {
+  const obj = await carregar(PASTA_ANIMACOES + encodeURIComponent(arquivoFbx) + '.fbx');
+  const a = obj.animations[0];
+  a.name = nome;
+  obj.traverse((o) => { if (o.isMesh) o.visible = false; });
+  return salvar(nome + '.glb', await exportar(obj, [a]));
+}
+
+// Foto rápida para conferir o personagem
+function foto(obj, titulo) {
+  const r = new THREE.WebGLRenderer({ antialias: true });
+  r.setSize(160, 220);
+  const cena = new THREE.Scene();
+  cena.background = new THREE.Color(0x888888);
+  cena.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.1));
+  cena.add(obj);
+  const caixa = new THREE.Box3().setFromObject(obj);
+  const centro = caixa.getCenter(new THREE.Vector3());
+  const altura = caixa.max.y - caixa.min.y;
+  const cam = new THREE.PerspectiveCamera(30, 160 / 220, 1, 10000);
+  cam.position.set(centro.x, centro.y, centro.z + altura * 2.3);
+  cam.lookAt(centro);
+  r.render(cena, cam);
+  r.domElement.title = titulo;
+  document.getElementById('fotos').appendChild(r.domElement);
+  cena.remove(obj);
+}
+</script>
+</body>
+</html>
