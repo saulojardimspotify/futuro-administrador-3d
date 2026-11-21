@@ -18,9 +18,10 @@ const Ranking = {
   },
 
   // Adiciona a partida, ordena e mantém só as 10 melhores.
+  // Se o registro já tem id (mesma jornada, fase seguinte), a linha antiga é substituída.
   salvar(registro) {
-    registro.id = Date.now();
-    const lista = [...this.ler(), registro].sort((a, b) => b.pontos - a.pontos).slice(0, this.TAMANHO);
+    registro.id = registro.id || Date.now();
+    const lista = [...this.ler().filter((r) => r.id !== registro.id), registro].sort((a, b) => b.pontos - a.pontos).slice(0, this.TAMANHO);
     try {
       localStorage.setItem(this.CHAVE, JSON.stringify(lista));
     } catch (e) {
@@ -29,11 +30,16 @@ const Ranking = {
     return { lista, id: registro.id };
   },
 
+  // Só a maior conquista da jornada: 👔 diretor(a), 🏆 promovido(a), 🎓 formado(a)
+  icone(r) {
+    return r.diretor ? '👔' : r.promovido ? '🏆' : r.formou ? '🎓' : r.fase >= 2 ? '🏢' : '';
+  },
+
   // Monta a tabela, destacando a partida que acabou de terminar.
   html({ lista, id }) {
     const linhas = lista
       .map((r, i) => `<li class="${r.id === id ? 'eu' : ''}">
-        <span>${i + 1}º ${escaparHtml(r.nome)} ${r.formou ? '🎓' : ''}${r.promovido ? '🏆' : ''}${r.diretor ? '👔' : ''}${r.fase >= 2 && !r.promovido && !r.diretor ? '🏢' : ''}</span><b>${r.pontos}</b></li>`)
+        <span>${i + 1}º ${escaparHtml(r.nome)} ${this.icone(r)}</span><b>${r.pontos}</b></li>`)
       .join('');
     const fora = lista.some((r) => r.id === id) ? '' : '<p class="fora">Sua pontuação não entrou no top 10.</p>';
     return `<h3>🏆 Ranking deste computador</h3><ol class="ranking">${linhas}</ol>${fora}`;

@@ -200,22 +200,6 @@ input.erro { border-color: #ef4444; animation: tremer 0.3s; }
   padding: 8px 18px; border-radius: 999px; background: rgba(16, 28, 84, 0.9);
   border: 2px solid #22d3ee; color: #a5f3fc; font-weight: 900; font-size: 18px;
 }
-.hud-pergunta {
-  position: absolute; left: 50%; top: 84px; transform: translateX(-50%);
-  width: min(620px, calc(100% - 32px)); padding: 10px 16px; text-align: center;
-  border-color: #facc15;
-}
-.pergunta-titulo { color: #facc15; font-weight: 900; font-size: 13px; letter-spacing: 0.5px; }
-.pergunta-texto { font-weight: 900; font-size: 19px; margin: 4px 0 8px; }
-.pergunta-opcoes { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.pergunta-opcoes span { background: #1e3a8a; border-radius: 10px; padding: 4px 10px; font-weight: 800; font-size: 14px; }
-.pergunta-opcoes b { color: #facc15; margin-right: 4px; }
-#tela-conselho { align-items: flex-end; }
-.painel-conselho { width: min(640px, 100%); }
-.conselho-progresso { color: #facc15; font-weight: 900; margin: 0; font-size: 15px !important; }
-.conselho-pergunta { font-size: 21px !important; font-weight: 900; margin: 6px 0 10px; }
-.btn.certo { background: linear-gradient(#4ade80, #15803d) !important; }
-.btn.errado { background: linear-gradient(#f87171, #b91c1c) !important; }
 /* tela azulada no "foco total" (câmera lenta) */
 #jogo.foco { filter: saturate(1.3) hue-rotate(-10deg) brightness(1.05); }
 

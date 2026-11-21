@@ -374,8 +374,6 @@ class Itens {
     this.porta = null;
     this.proximoZ = -35;
     this.zUltimaFileira = undefined;
-    this.contadorFileiras = 0;
-    this.perguntasUsadas = [];
     this.coletadas = [];
     this.modoFinal = false;
   }
@@ -399,14 +397,6 @@ class Itens {
   // Se o jogador tem só 1 vida, às vezes aparece também uma xícara de café.
   gerarFileira(z, jogo) {
     const fase = FASES[this.fase];
-    // Fase 3: de tempos em tempos, uma fileira é um portão de decisão (sem obstáculos)
-    this.contadorFileiras = (this.contadorFileiras || 0) + 1;
-    if (fase.portaoACada && this.contadorFileiras % fase.portaoACada === 0) {
-      const q = sortearPergunta(this.perguntasUsadas);
-      this.zUltimaFileira = z;
-      this.adicionar(criarPortao(q), 0, z, { tipo: 'portao', pergunta: q.pergunta, respostas: q.respostas, certa: q.certa });
-      return;
-    }
     const faixas = [-1, 0, 1].sort(() => Math.random() - 0.5);
     const qtd = Math.random() < fase.chanceDois ? 2 : 1;
     const tipos = Object.keys(fase.obstaculos);
@@ -434,17 +424,6 @@ class Itens {
       const poder = tipos[Math.floor(Math.random() * tipos.length)];
       this.adicionar(criarPoder(poder), livres.shift(), z, { tipo: 'poder', poder });
     }
-  }
-
-  // O portão de decisão mais próximo à frente (para mostrar a pergunta na tela)
-  proximoPortao(jogo) {
-    let melhor = null;
-    for (const item of this.lista) {
-      const d = item.userData;
-      const distancia = jogo.z - item.position.z;
-      if (d.tipo === 'portao' && !d.usado && distancia > 0 && distancia < 75 && (!melhor || distancia < jogo.z - melhor.position.z)) melhor = item;
-    }
-    return melhor;
   }
 
   // Chamado a cada quadro. Devolve a lista do que o jogador pegou/bateu.
@@ -495,13 +474,6 @@ class Itens {
       const dz = Math.abs(item.position.z - jogo.z);
       const dx = Math.abs(item.position.x - jogo.x);
       if (!d.usado && dz < 0.6) {
-        // portão: a resposta é a faixa por onde o jogador passou
-        if (d.tipo === 'portao') {
-          d.usado = true;
-          const faixaEscolhida = Math.round(jogo.x / 2) + 1; // 0 = A (esquerda), 1 = B, 2 = C
-          eventos.push({ tipo: 'portao', certo: faixaEscolhida === d.certa, resposta: d.respostas[d.certa] });
-          continue;
-        }
         if (d.tipo === 'poder' && dx < 0.9) {
           eventos.push({ tipo: 'poder', poder: d.poder });
           this.remover(item);
@@ -571,11 +543,29 @@ class Itens {
     topo.position.set(0, 3.6, 0);
     g.add(esq, dir, topo);
 
-    const moldura = caixa(3.0, 3.15, 0.25, 0xd4a017);
-    moldura.position.set(0, 1.5, -0.05);
-    const luzAlem = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 3.0), new THREE.MeshBasicMaterial({ color: 0xfff4c2 }));
-    luzAlem.position.set(0, 1.5, -0.6);
-    g.add(moldura, luzAlem);
+    // Moldura dourada vazada (só as bordas): com a porta aberta dá para ver a luz lá dentro
+    // e o jogador passa pelo vão. (Antes era um bloco inteiro e ele "atravessava a parede".)
+    const bordaE = caixa(0.12, 3.1, 0.3, 0xd4a017);
+    bordaE.position.set(-1.46, 1.55, 0);
+    const bordaD = bordaE.clone();
+    bordaD.position.x = 1.46;
+    const bordaTopo = caixa(3.04, 0.12, 0.3, 0xd4a017);
+    bordaTopo.position.set(0, 3.06, 0);
+    g.add(bordaE, bordaD, bordaTopo);
+    // do outro lado da porta: um "corredor" de luz (chão claro e fundo iluminado)
+    const luz = new THREE.MeshBasicMaterial({ color: 0xfff4c2 });
+    const luzAlem = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 3.0), luz);
+    luzAlem.position.set(0, 1.5, -6);
+    const chaoLuz = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 6), luz);
+    chaoLuz.rotation.x = -Math.PI / 2;
+    chaoLuz.position.set(0, 0.01, -3);
+    for (const x of [-1.4, 1.4]) {
+      const lateral = new THREE.Mesh(new THREE.PlaneGeometry(6, 3.0), new THREE.MeshBasicMaterial({ color: 0xffe9a8 }));
+      lateral.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+      lateral.position.set(x, 1.5, -3);
+      g.add(lateral);
+    }
+    g.add(luzAlem, chaoLuz);
 
     // Duas folhas de porta, cada uma girando na sua dobradiça
     const criarFolha = (lado) => {

@@ -19,41 +19,6 @@ const OBSTACULOS_FASE3 = {
   impressora: { nome: 'Impressora travada', passarPorBaixo: true },
 };
 
-// Perguntas de gestão: usadas nos portões do corredor e na reunião com o conselho.
-// "certa" é o índice da resposta correta.
-const PERGUNTAS = [
-  { p: 'As vendas caíram 20%. O que fazer primeiro?', r: ['Analisar o mercado', 'Demitir todos', 'Ignorar a queda'], certa: 0 },
-  { p: 'A equipe está desmotivada. Melhor atitude?', r: ['Ouvir e reconhecer', 'Cobrar mais horas', 'Cortar salários'], certa: 0 },
-  { p: 'Os 4 Ps do Marketing são Produto, Preço, Praça e...', r: ['Promoção', 'Pessoas', 'Processos'], certa: 0 },
-  { p: 'Quem é considerado o "pai" da Administração Científica?', r: ['Taylor', 'Fayol', 'Maslow'], certa: 0 },
-  { p: 'Na pirâmide de Maslow, qual necessidade fica na base?', r: ['Fisiológicas', 'Autorrealização', 'Estima'], certa: 0 },
-  { p: 'Análise que avalia Forças, Fraquezas, Oportunidades e Ameaças:', r: ['SWOT', 'PDCA', 'BCG'], certa: 0 },
-  { p: 'O que significa PDCA?', r: ['Planejar, Fazer, Checar, Agir', 'Produzir, Doar, Comprar, Avaliar', 'Pagar, Dever, Cobrar, Atrasar'], certa: 0 },
-  { p: 'Para saber se um investimento vale a pena, usamos:', r: ['VPL', 'IPTU', 'CLT'], certa: 0 },
-  { p: 'O que é capital de giro?', r: ['Dinheiro para a operação do dia a dia', 'Dinheiro dos sócios', 'Lucro do ano'], certa: 0 },
-  { p: 'Receita menos todos os custos e despesas é o:', r: ['Lucro', 'Faturamento', 'Patrimônio'], certa: 0 },
-  { p: 'Um cliente reclamou nas redes sociais. O que fazer?', r: ['Responder rápido e resolver', 'Apagar o comentário', 'Ignorar'], certa: 0 },
-  { p: 'ESG significa Ambiental, Social e...', r: ['Governança', 'Gestão', 'Garantia'], certa: 0 },
-  { p: 'Estoque que gira devagar demais significa:', r: ['Dinheiro parado', 'Lucro garantido', 'Venda certa'], certa: 0 },
-  { p: 'Na matriz BCG, o produto que dá muito lucro e cresce pouco é a:', r: ['Vaca leiteira', 'Estrela', 'Interrogação'], certa: 0 },
-  { p: 'Fayol definiu as funções administrativas: planejar, organizar, comandar, coordenar e...', r: ['Controlar', 'Comprar', 'Contratar'], certa: 0 },
-  { p: 'Um bom líder, diante de um erro da equipe:', r: ['Busca a causa e ensina', 'Procura um culpado', 'Finge que não viu'], certa: 0 },
-  { p: 'Ponto de equilíbrio é quando a empresa:', r: ['Não tem lucro nem prejuízo', 'Tem lucro máximo', 'Fecha as portas'], certa: 0 },
-  { p: 'Just in Time é uma técnica de:', r: ['Logística e estoques', 'Recrutamento', 'Publicidade'], certa: 0 },
-  { p: 'Missão, visão e valores fazem parte do:', r: ['Planejamento estratégico', 'Balanço patrimonial', 'Folha de pagamento'], certa: 0 },
-  { p: 'Antes de abrir um negócio, o empreendedor deve fazer um:', r: ['Plano de negócios', 'Empréstimo alto', 'Festa de inauguração'], certa: 0 },
-];
-
-// Sorteia uma pergunta ainda não usada nesta partida, com as respostas embaralhadas
-function sortearPergunta(usadas) {
-  const livres = PERGUNTAS.map((_, i) => i).filter((i) => !usadas.includes(i));
-  const indice = (livres.length ? livres : PERGUNTAS.map((_, i) => i))[Math.floor(Math.random() * (livres.length || PERGUNTAS.length))];
-  usadas.push(indice);
-  const q = PERGUNTAS[indice];
-  const ordem = [0, 1, 2].sort(() => Math.random() - 0.5);
-  return { pergunta: q.p, respostas: ordem.map((i) => q.r[i]), certa: ordem.indexOf(q.certa) };
-}
-
 // ---------- A cidade vista dos janelões (desenhada no código) ----------
 // "noite = true" desenha os prédios escuros com as janelas acesas.
 // O céu fica transparente: quem pinta o céu é a cor de fundo da cena (que muda com o dia).
@@ -406,41 +371,12 @@ function criarPoder(tipo) {
   return g;
 }
 
-// ---------- Portão de decisão: 3 arcos, um em cada faixa, com as respostas ----------
-function criarPortao(q) {
-  const g = new THREE.Group();
-  const cores = [0x2563eb, 0x7c3aed, 0x0891b2];
-  q.respostas.forEach((resposta, i) => {
-    const x = (i - 1) * 2;
-    for (const lado of [-0.9, 0.9]) {
-      const poste = caixa(0.12, 2.6, 0.12, cores[i]);
-      poste.position.set(x + lado, 1.3, 0);
-      g.add(poste);
-    }
-    const textura = criarTexturaTexto(quebrarEmLinhas(resposta), { largura: 512, altura: 220, fundo: '#ffffff', cor: '#0f1f4d', borda: '#facc15', tamanho: 64 });
-    const placa = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 0.75), new THREE.MeshBasicMaterial({ map: textura }));
-    placa.position.set(x, 2.25, 0.07);
-    const letra = criarTexturaTexto(['A', 'B', 'C'][i], { largura: 128, altura: 128, fundo: '#facc15', cor: '#0f1f4d', tamanho: 100 });
-    const selo = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: letra }));
-    selo.position.set(x, 2.85, 0.08);
-    g.add(placa, selo);
-  });
-  return g;
-}
-
-function quebrarEmLinhas(texto) {
-  const palavras = texto.split(' ');
-  if (palavras.length < 3) return [texto];
-  const meio = Math.ceil(palavras.length / 2);
-  return [palavras.slice(0, meio).join(' '), palavras.slice(meio).join(' ')];
-}
-
 FASES[3] = {
   meta: META_FASE3, colecao: SOLUCOES, obstaculos: OBSTACULOS_FASE3,
   criarObstaculo: criarObstaculoFase3, criarColetavel: criarSolucao, tema: 'diretoria', corFundo: 0x9fd3ff,
   unidade: 'soluções', titulo: '🏢 Salvar a empresa', curso: 'GERENTE DA EMPRESA',
   vel: [19, 0.12, 0.7, 40], chanceDois: 0.6, espaco: [9, 0.72], chanceItem: 0.45, chanceCafe: 0.15, invencivel: 1.0,
-  chancePoder: 0.09, portaoACada: 13, // um portão de decisão a cada 13 fileiras
+  chancePoder: 0.09,
 };
 
 // Cor do céu ao longo da fase: manhã → pôr do sol → noite (p = 0..1)

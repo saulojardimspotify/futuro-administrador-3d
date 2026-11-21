@@ -110,9 +110,9 @@ function montarSelecao() {
   // Jogar/tentar de novo: volta para a escolha com o nome em branco (próxima pessoa joga)
   $('btn-tentar').onclick = () => novoJogador(fase);
   $('btn-denovo').onclick = () => novoJogador(1);
-  $('btn-fase2').onclick = () => comecarPartida(2);
+  $('btn-fase2').onclick = () => comecarPartida(2, true);
   $('btn-denovo2').onclick = () => novoJogador(2);
-  $('btn-fase3').onclick = () => comecarPartida(3);
+  $('btn-fase3').onclick = () => comecarPartida(3, true);
   $('btn-denovo3').onclick = () => novoJogador(3);
   document.querySelectorAll('.btn-inicio').forEach((b) => (b.onclick = voltarInicio));
 
@@ -210,14 +210,28 @@ function focarCartao() {
 }
 
 function esconderTelas() {
-  ['tela-selecao', 'tela-fim', 'tela-vitoria', 'tela-promocao', 'tela-conselho', 'tela-diretor'].forEach((id) => $(id).classList.add('escondido'));
+  ['tela-selecao', 'tela-fim', 'tela-vitoria', 'tela-promocao', 'tela-diretor'].forEach((id) => $(id).classList.add('escondido'));
 }
 
 // ---------- Partida ----------
 
 let carregandoPartida = false;
 
-async function comecarPartida(numFase = 1) {
+// Jornada: a mesma pessoa seguindo de fase em fase. Os pontos vão somando e no ranking
+// fica UMA linha só, atualizada a cada fase (com a maior conquista: 🎓, 🏆 ou 👔).
+const jornada = { id: null, pontos: 0, conquistas: {} };
+
+function salvarNoRanking(conquista) {
+  jornada.pontos = Math.floor(jogo.pontos);
+  if (conquista) jornada.conquistas[conquista] = true;
+  const resultado = Ranking.salvar(Object.assign({ id: jornada.id, nome: nomeJogador, pontos: jornada.pontos, fase }, jornada.conquistas));
+  jornada.id = resultado.id;
+  return Ranking.html(resultado);
+}
+
+// continuar = true quando vem do botão "Fase 2 ▶" / "Fase 3 ▶" (mesma jornada)
+async function comecarPartida(numFase = 1, continuar = false) {
+  if (!continuar) Object.assign(jornada, { id: null, pontos: 0, conquistas: {} });
   if (carregandoPartida) return;
   const nome = $('nome').value.trim();
   if (!nome) {
@@ -274,7 +288,7 @@ async function comecarPartida(numFase = 1) {
   itens.reiniciar();
   Object.assign(jogo, {
     z: 0, x: 0, y: 0, vy: 0, faixa: 0, vel: 10, tempo: 0,
-    pontos: 0, vidas: 3, invencivel: 0, final: false, zPorta: 0, travado: false, abaixado: 0,
+    pontos: jornada.pontos, vidas: 3, invencivel: 0, final: false, zPorta: 0, travado: false, abaixado: 0,
     caixa: 100, combo: 0, foco: 0, escudo: false, ima: 0, // fase 3
   });
 
@@ -396,19 +410,6 @@ function atualizarJogo(dt) {
       Sons.cafe();
     } else if (ev.tipo === 'poder') {
       ativarPoder(ev.poder);
-    } else if (ev.tipo === 'portao') {
-      if (ev.certo) {
-        jogo.caixa = Math.min(100, jogo.caixa + 15);
-        jogo.pontos += 300;
-        HUD.aviso('✅ Decisão certa! +caixa', 'bom');
-        Sons.todasDisciplinas();
-      } else {
-        jogo.caixa -= 15;
-        jogo.combo = 0;
-        HUD.combo(0);
-        HUD.aviso(`❌ Decisão errada! O certo era: ${ev.resposta}`, 'ruim');
-        Sons.batida();
-      }
     } else if (jogo.invencivel <= 0) {
       jogo.combo = 0;
       HUD.combo(0);
@@ -431,15 +432,17 @@ function atualizarJogo(dt) {
     }
   }
 
-  // Fase 3: juntou todas as soluções? Reunião com o conselho!
-  if (fase === 3 && itens.coletadas.length >= FASES[3].meta) return irParaConselho();
-
-  // Fase 1: pegou todas as disciplinas? Aparece a porta do auditório.
-  // Fase 2: bateu todas as metas? Aparece a porta da sala da diretoria.
-  if (fase <= 2 && !jogo.final && itens.coletadas.length >= FASES[fase].meta) {
+  // Pegou tudo da fase? Aparece uma porta no fim do corredor:
+  // fase 1 → auditório (formatura), fase 2 → diretoria (efetivação), fase 3 → conselho
+  if (!jogo.final && itens.coletadas.length >= FASES[fase].meta) {
     jogo.final = true;
-    jogo.zPorta = itens.criarPorta(jogo.z, fase === 1 ? '🎓 AUDITÓRIO' : '🏢 DIRETORIA');
-    HUD.aviso(fase === 1 ? 'Todas as disciplinas concluídas! Siga para o Auditório 🎓' : 'Metas batidas! O chefe te chamou na Diretoria 🏢', 'final');
+    const porta = {
+      1: ['🎓 AUDITÓRIO', 'Todas as disciplinas concluídas! Siga para o Auditório 🎓'],
+      2: ['🏢 DIRETORIA', 'Metas batidas! O chefe te chamou na Diretoria 🏢'],
+      3: ['🏛️ CONSELHO', 'Empresa salva! O Conselho de Administração te espera 🏛️'],
+    }[fase];
+    jogo.zPorta = itens.criarPorta(jogo.z, porta[0]);
+    HUD.aviso(porta[1], 'final');
     Sons.todasDisciplinas();
   }
   if (jogo.final) {
@@ -450,7 +453,7 @@ function atualizarJogo(dt) {
       jogo.faixa = 0;
       itens.abrirPorta(1 - Math.max(0, (distancia - 3) / 15));
     }
-    if (distancia < 1) fase === 2 ? irParaPromocao() : irParaAuditorio();
+    if (distancia < 1) [irParaAuditorio, irParaPromocao, irParaConselho][fase - 1]();
   }
 
   HUD.pontos(jogo.pontos);
@@ -480,9 +483,7 @@ function fimDeJogo(motivo) {
       : fase === 2 ? '😢 Você foi desligado do estágio' : '😢 Você trancou o curso';
     $('fim-texto').innerHTML =
       `Você conquistou <b>${itens.coletadas.length} de ${config.meta}</b> ${config.unidade}<br>e fez <b>${Math.floor(jogo.pontos)}</b> pontos.`;
-    $('fim-ranking').innerHTML = Ranking.html(
-      Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: false, fase })
-    );
+    $('fim-ranking').innerHTML = salvarNoRanking();
     mostrarTela('tela-fim');
     HUD.esconder();
     tela = 'fim';
@@ -514,9 +515,7 @@ function mostrarPromocao() {
   $('promocao-titulo').textContent = def.mulher ? 'Promovida!' : 'Promovido!';
   $('promocao-texto').innerHTML =
     `Parabéns, <b>${escaparHtml(nomeJogador)}</b>!<br>Você bateu todas as metas e foi ${def.mulher ? 'efetivada' : 'efetivado'} na empresa.<br>Pontuação: <b>${Math.floor(jogo.pontos)}</b>`;
-  $('promocao-ranking').innerHTML = Ranking.html(
-    Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), promovido: true, fase: 2 })
-  );
+  $('promocao-ranking').innerHTML = salvarNoRanking('promovido');
   mostrarTela('tela-promocao');
 }
 
@@ -525,17 +524,13 @@ function mostrarPromocao() {
 let bolhaEquipe = null; // a "bolha" verde do poder Equipe
 
 function atualizarFase3(dt) {
-  // o caixa da empresa desce sozinho o tempo todo
-  jogo.caixa -= dt * 1.1;
+  // o caixa da empresa desce sozinho o tempo todo (menos no caminho até a porta do conselho)
+  if (!jogo.final) jogo.caixa -= dt * 1.1;
   HUD.caixa(jogo.caixa);
 
   // o dia passa conforme as soluções: manhã → pôr do sol → noite
   corredor.ajustarHorario(itens.coletadas.length / FASES[3].meta, cena);
   desenharTelaGrafico(tempoTotal);
-
-  // pergunta do portão que está chegando
-  const portao = itens.proximoPortao(jogo);
-  HUD.pergunta(portao ? portao.userData : null);
 
   // poderes com tempo
   jogo.foco = Math.max(0, jogo.foco - dt);
@@ -571,13 +566,12 @@ function ativarPoder(poder) {
 function limparEfeitosFase3() {
   renderizador.domElement.classList.remove('foco');
   if (bolhaEquipe) bolhaEquipe.visible = false;
-  HUD.pergunta(null);
   HUD.poder(null);
 }
 
-// ---------- Fase 3: reunião com o conselho ----------
-
-let quiz = null;
+// ---------- Fase 3: reunião com o conselho (cena, sem perguntas) ----------
+// A CEO se levanta, vai até o jogador e entrega a placa de Diretor(a);
+// os diretores aplaudem sentados (conselho.js). Depois aparece a tela de vitória.
 
 function irParaConselho() {
   tela = 'transicao';
@@ -589,11 +583,9 @@ function irParaConselho() {
   setTimeout(() => {
     HUD.esconder();
     const montar = (real) => {
-      auditorio = new Conselho(def, real);
-      tela = 'conselho';
+      auditorio = new Conselho(def, nomeJogador, mostrarDiretor, real);
+      tela = 'auditorio';
       $('fade').classList.remove('ativo');
-      quiz = { perguntas: [0, 1, 2].map(() => sortearPergunta(itens.perguntasUsadas)), atual: 0, acertos: 0 };
-      setTimeout(mostrarPerguntaConselho, 1200);
     };
     if (jogador.userData.real) {
       Promise.all([Modelos.criar(def), Modelos.preparar(['ceo', ...FIGURANTES])]).then(([real]) => montar(real), () => montar(null));
@@ -601,67 +593,13 @@ function irParaConselho() {
   }, 900);
 }
 
-function mostrarPerguntaConselho() {
-  const q = quiz.perguntas[quiz.atual];
-  $('conselho-progresso').textContent = `Pergunta ${quiz.atual + 1} de 3 · acerte pelo menos 2 para virar Diretor`;
-  $('conselho-pergunta').textContent = q.pergunta;
-  const caixaOpcoes = $('conselho-opcoes');
-  caixaOpcoes.innerHTML = '';
-  q.respostas.forEach((resposta, i) => {
-    const botao = document.createElement('button');
-    botao.className = 'btn' + (i ? ' secundario' : '');
-    botao.textContent = `${'ABC'[i]}) ${resposta}`;
-    botao.onclick = () => responderConselho(i);
-    caixaOpcoes.appendChild(botao);
-  });
-  mostrarTela('tela-conselho');
-}
-
-function responderConselho(escolha) {
-  const q = quiz.perguntas[quiz.atual];
-  const botoes = [...$('conselho-opcoes').querySelectorAll('.btn')];
-  if (botoes.some((b) => b.disabled)) return;
-  botoes.forEach((b) => (b.disabled = true));
-  botoes[q.certa].classList.add('certo');
-  if (escolha === q.certa) {
-    quiz.acertos++;
-    Sons.livro();
-  } else {
-    botoes[escolha].classList.add('errado');
-    Sons.batida();
-  }
-  setTimeout(() => {
-    quiz.atual++;
-    if (quiz.atual < 3) return mostrarPerguntaConselho();
-    $('tela-conselho').classList.add('escondido');
-    finalizarConselho(quiz.acertos >= 2);
-  }, 1400);
-}
-
-function finalizarConselho(aprovado) {
+function mostrarDiretor() {
   const def = PERSONAGENS[escolhido];
-  auditorio.resultado(aprovado);
-  jogo.pontos += quiz.acertos * 500;
-  if (!aprovado) {
-    Sons.gameOver();
-    $('fim-titulo').textContent = '😢 O conselho não aprovou o seu plano';
-    $('fim-texto').innerHTML = `Você acertou <b>${quiz.acertos} de 3</b> perguntas do conselho<br>e fez <b>${Math.floor(jogo.pontos)}</b> pontos.`;
-    $('fim-ranking').innerHTML = Ranking.html(Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), fase: 3 }));
-    tela = 'fim';
-    return setTimeout(() => mostrarTela('tela-fim'), 800);
-  }
-  Sons.tocarArquivo('final2', 1);
-  Sons.tocarArquivo('applause', 0.8);
-  setTimeout(() => {
-    $('diretor-titulo').textContent = def.mulher ? 'Você é a nova Diretora!' : 'Você é o novo Diretor!';
-    $('diretor-texto').innerHTML =
-      `Parabéns, <b>${escaparHtml(nomeJogador)}</b>!<br>Você salvou a empresa e convenceu o conselho (${quiz.acertos} de 3).<br>Pontuação: <b>${Math.floor(jogo.pontos)}</b>`;
-    $('diretor-ranking').innerHTML = Ranking.html(
-      Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), diretor: true, fase: 3 })
-    );
-    tela = 'fim';
-    mostrarTela('tela-diretor');
-  }, 2500);
+  $('diretor-titulo').textContent = def.mulher ? 'Você é a nova Diretora!' : 'Você é o novo Diretor!';
+  $('diretor-texto').innerHTML =
+    `Parabéns, <b>${escaparHtml(nomeJogador)}</b>!<br>Você salvou a empresa e o conselho te escolheu para a diretoria.<br>Pontuação: <b>${Math.floor(jogo.pontos)}</b>`;
+  $('diretor-ranking').innerHTML = salvarNoRanking('diretor');
+  mostrarTela('tela-diretor');
 }
 
 function irParaAuditorio() {
@@ -676,9 +614,7 @@ function irParaAuditorio() {
       const titulo = def.mulher ? 'Administradora formada' : 'Administrador formado';
       $('vitoria-texto').innerHTML =
         `Parabéns, <b>${escaparHtml(nomeJogador)}</b>!<br>Agora você é ${titulo}.<br>Pontuação final: <b>${Math.floor(jogo.pontos)}</b>`;
-      $('vitoria-ranking').innerHTML = Ranking.html(
-        Ranking.salvar({ nome: nomeJogador, pontos: Math.floor(jogo.pontos), formou: true, fase: 1 })
-      );
+      $('vitoria-ranking').innerHTML = salvarNoRanking('formou');
       mostrarTela('tela-vitoria');
     }, real);
     tela = 'auditorio';

@@ -13,7 +13,6 @@ const HUD = {
     this.el('hud-caixa-bloco').classList.toggle('escondido', fase !== 3);
     this.combo(0);
     this.poder(null);
-    this.pergunta(null);
     this.el('hud-avatar').src = def.retratoRosto;
     this.el('hud-nome').textContent = `${titulo} ${nome}`;
     this.el('hud-curso').textContent = config.curso;
@@ -73,16 +72,6 @@ const HUD = {
     if (texto) el.textContent = texto;
   },
 
-  // Pergunta do portão de decisão que está chegando (ou null para esconder)
-  pergunta(q) {
-    const el = this.el('hud-pergunta');
-    el.classList.toggle('escondido', !q);
-    if (!q || el.dataset.atual === q.pergunta) return;
-    el.dataset.atual = q.pergunta;
-    el.innerHTML = `<div class="pergunta-titulo">🚪 DECISÃO: passe pelo portão certo!</div>
-      <div class="pergunta-texto">${q.pergunta}</div>
-      <div class="pergunta-opcoes">${q.respostas.map((r, i) => `<span><b>${'ABC'[i]}</b> ${r}</span>`).join('')}</div>`;
-  },
 
   aviso(texto, tipo) {
     const a = this.el('aviso');
