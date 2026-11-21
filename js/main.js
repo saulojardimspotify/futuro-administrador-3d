@@ -107,13 +107,14 @@ function montarSelecao() {
     $('previa-nome').textContent = `Futuro Administrador ${$('nome').value.trim() || '...'}`;
   });
   $('btn-comecar').onclick = () => comecarPartida(faseEscolhida);
-  // Jogar/tentar de novo: volta para a escolha com o nome em branco (próxima pessoa joga)
-  $('btn-tentar').onclick = () => novoJogador(fase);
-  $('btn-denovo').onclick = () => novoJogador(1);
-  $('btn-fase2').onclick = () => comecarPartida(2, true);
-  $('btn-denovo2').onclick = () => novoJogador(2);
-  $('btn-fase3').onclick = () => comecarPartida(3, true);
-  $('btn-denovo3').onclick = () => novoJogador(3);
+  // Tentar/jogar de novo: o MESMO jogador (mesmo nome e personagem) repete a fase na hora.
+  // Para a próxima pessoa jogar, use "Voltar ao início" (aí o nome fica em branco).
+  $('btn-tentar').onclick = () => comecarPartida(fase, 'repetir');
+  $('btn-denovo').onclick = () => comecarPartida(1, 'repetir');
+  $('btn-fase2').onclick = () => comecarPartida(2, 'proxima');
+  $('btn-denovo2').onclick = () => comecarPartida(2, 'repetir');
+  $('btn-fase3').onclick = () => comecarPartida(3, 'proxima');
+  $('btn-denovo3').onclick = () => comecarPartida(3, 'repetir');
   document.querySelectorAll('.btn-inicio').forEach((b) => (b.onclick = voltarInicio));
 
   escolher(0);
@@ -172,13 +173,6 @@ function voltarSelecao() {
   focarCartao();
 }
 
-// "Jogar de novo" / "Tentar de novo": volta para a escolha (nome em branco) e,
-// ao confirmar o nome, começa a fase indicada
-function novoJogador(numFase) {
-  faseEscolhida = numFase;
-  voltarSelecao();
-}
-
 // "Voltar ao início": volta para a tela de abertura com a foto da faculdade
 function voltarInicio() {
   faseEscolhida = 1;
@@ -219,20 +213,24 @@ let carregandoPartida = false;
 
 // Jornada: a mesma pessoa seguindo de fase em fase. Os pontos vão somando e no ranking
 // fica UMA linha só, atualizada a cada fase (com a maior conquista: 🎓, 🏆 ou 👔).
-const jornada = { id: null, pontos: 0, conquistas: {} };
+// base = pontos com que a fase atual começou (para "tentar de novo" começar igual)
+const jornada = { id: null, pontos: 0, base: 0, recorde: 0, conquistas: {} };
 
 function salvarNoRanking(conquista) {
   jornada.pontos = Math.floor(jogo.pontos);
+  jornada.recorde = Math.max(jornada.recorde, jornada.pontos); // repetir pior não baixa o ranking
   if (conquista) jornada.conquistas[conquista] = true;
-  const resultado = Ranking.salvar(Object.assign({ id: jornada.id, nome: nomeJogador, pontos: jornada.pontos, fase }, jornada.conquistas));
+  const resultado = Ranking.salvar(Object.assign({ id: jornada.id, nome: nomeJogador, pontos: jornada.recorde, fase }, jornada.conquistas));
   jornada.id = resultado.id;
   return Ranking.html(resultado);
 }
 
-// continuar = true quando vem do botão "Fase 2 ▶" / "Fase 3 ▶" (mesma jornada)
-async function comecarPartida(numFase = 1, continuar = false) {
-  if (!continuar) Object.assign(jornada, { id: null, pontos: 0, conquistas: {} });
+// modo: 'nova' (tela de escolha: jornada nova), 'proxima' (botão "Fase 2 ▶"/"Fase 3 ▶")
+// ou 'repetir' (tentar/jogar de novo a mesma fase, mesmo jogador)
+async function comecarPartida(numFase = 1, modo = 'nova') {
   if (carregandoPartida) return;
+  if (modo === 'nova') Object.assign(jornada, { id: null, pontos: 0, base: 0, recorde: 0, conquistas: {} });
+  if (modo === 'proxima') jornada.base = jornada.pontos;
   const nome = $('nome').value.trim();
   if (!nome) {
     $('nome').classList.add('erro');
@@ -288,7 +286,7 @@ async function comecarPartida(numFase = 1, continuar = false) {
   itens.reiniciar();
   Object.assign(jogo, {
     z: 0, x: 0, y: 0, vy: 0, faixa: 0, vel: 10, tempo: 0,
-    pontos: jornada.pontos, vidas: 3, invencivel: 0, final: false, zPorta: 0, travado: false, abaixado: 0,
+    pontos: jornada.base, vidas: 3, invencivel: 0, final: false, zPorta: 0, travado: false, abaixado: 0,
     caixa: 100, combo: 0, foco: 0, escudo: false, ima: 0, // fase 3
   });
 

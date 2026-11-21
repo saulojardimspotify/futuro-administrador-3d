@@ -119,6 +119,20 @@ class Promocao {
       new THREE.MeshBasicMaterial({ map: texturaCracha(def, nome) })
     );
     this.cracha.add(cartao);
+    // cordão azul que passa por trás do pescoço (só aparece quando o crachá está no peito)
+    const voltaDoPescoco = [
+      [-0.045, 0.1, 0], [-0.065, 0.15, -0.03], [-0.075, 0.19, -0.1], [-0.05, 0.21, -0.17],
+      [0, 0.215, -0.19], [0.05, 0.21, -0.17], [0.075, 0.19, -0.1], [0.065, 0.15, -0.03], [0.045, 0.1, 0],
+    ].map((p) => new THREE.Vector3(...p));
+    this.cordao = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(voltaDoPescoco), 48, 0.008, 6),
+      new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.6 })
+    );
+    const presilha = caixa(0.03, 0.03, 0.012, 0xc0c0c0);
+    presilha.position.set(0, 0.105, 0.004);
+    this.cordao.add(presilha);
+    this.cordao.visible = false;
+    this.cracha.add(this.cordao);
     if (this.chefeReal) {
       this.chefeReal.prenderNoOsso('RightHand', this.cracha, new THREE.Vector3(0, 0.12, 0.03));
     } else {
@@ -310,54 +324,72 @@ class Promocao {
         this.real.velocidade(0.55);
       } else animarCorrida(j, t * 7, 0.5);
     } else if (this.real) {
-      if (t < 8.6) this.real.tocar('parado');
-    } else if (t < 8.6) animarCorrida(j, 0, 0);
+      if (t < 9.0) this.real.tocar('parado');
+    } else if (t < 9.0) animarCorrida(j, 0, 0);
+
+    // 2) O chefe dá dois passos até o jogador (4,8 a 5,8 s)
+    const ch = this.chefe;
+    if (t >= 4.8 && t < 5.8) {
+      const k = suave(progresso(t, 4.8, 5.8));
+      ch.position.set(1.15 + (0.68 - 1.15) * k, 0, -4.3 + (-4.15 + 4.3) * k);
+      if (this.chefeReal) this.chefeReal.tocar('andar', 0.2);
+    } else if (t >= 5.8 && t < 9.0 && this.chefeReal) this.chefeReal.tocar('parado', 0.25);
     if (this.real) this.real.atualizar(dt);
     if (this.chefeReal) this.chefeReal.atualizar(dt);
 
-    // 2) Vira para o chefe e recebe o crachá (4,6 a 8,6 s)
-    if (t >= 4.6 && t < 8.6) j.rotation.y = (-Math.PI / 4) * suave(progresso(t, 4.6, 5.1));
-    if (this.real && this.chefeReal && t >= 4.6 && t < 8.6) {
-      // aperto de mão / entrega: os dois estendem o braço até um ponto entre eles
-      const encontro = this.real.posicaoDoOsso('RightArm').add(this.chefeReal.posicaoDoOsso('RightArm')).multiplyScalar(0.5);
-      encontro.y -= 0.05;
-      const braco = suave(progresso(t, 5.2, 5.8)) * (1 - suave(progresso(t, 6.6, 7.1)));
-      this.chefeReal.mirarBraco(encontro, braco);
-      this.real.mirarBraco(encontro, braco);
-      const maoJogador = this.real.modelo.getObjectByName('RightHand');
-      if (t >= 6.0 && t < 7.4 && this.cracha.parent !== maoJogador) {
-        this.real.prenderNoOsso('RightHand', this.cracha, new THREE.Vector3(0, 0.12, 0.03));
+    // 3) O jogador vira para o chefe; o chefe prende o crachá no peito dele (5,8 a 7,3 s)
+    //    e depois os dois apertam as mãos (7,3 a 8,8 s)
+    if (t >= 4.6 && t < 9.0) j.rotation.y = (-Math.PI / 4) * suave(progresso(t, 4.6, 5.1));
+    if (t >= 5.8 && t < 9.0) {
+      // ponto no peito do jogador, um pouco à frente (do lado do chefe)
+      j.updateMatrixWorld(true);
+      const peito = this.real ? this.real.posicaoDoOsso('Spine2') : j.localToWorld(new THREE.Vector3(0, 1.25, -0.3));
+      const paraChefe = ch.position.clone().sub(j.position).setY(0).normalize();
+      const alvoPeito = peito.clone().addScaledVector(paraChefe, 0.18);
+      alvoPeito.y += 0.04;
+
+      if (this.chefeReal) {
+        const prender = suave(progresso(t, 5.8, 6.4)) * (1 - suave(progresso(t, 6.8, 7.2)));
+        this.chefeReal.mirarBraco(alvoPeito, prender);
+      } else {
+        this.chefe.userData.bracoD.rotation.x = t < 7.0 ? 1.4 * progresso(t, 5.8, 6.3) : 0;
+        if (!this.noPeito) {
+          this.cracha.position.lerpVectors(this.maoDoChefe(), alvoPeito, suave(progresso(t, 5.9, 6.5)));
+          this.cracha.lookAt(this.camera.position);
+        }
       }
-      // 3) Coloca o crachá no peito
-      if (t >= 7.4 && !this.noPeito) this.colocarNoPeito();
-    } else if (t >= 4.6 && t < 8.6) {
-      // bonecos de blocos: o crachá "voa" da mão do chefe para o peito do jogador
-      if (!this.chefeReal) this.chefe.userData.bracoD.rotation.x = 1.3 * progresso(t, 5.0, 5.5) * (t < 6.6 ? 1 : 0);
-      if (!this.real) jp.bracoD.rotation.x = 1.3 * progresso(t, 5.3, 5.7) * (t < 6.6 ? 1 : 0);
-      if (t >= 7.4 && !this.noPeito && this.cracha.parent !== this.cena) this.colocarNoPeito(); // um realista e outro não
-      if (this.cracha.parent === this.cena) {
-        j.updateMatrixWorld(true);
-        const peito = this.real ? this.real.posicaoDoOsso('Spine2') : j.localToWorld(new THREE.Vector3(0, 1.25, -0.3));
-        const k = suave(progresso(t, 5.6, 7.2));
-        this.cracha.position.lerpVectors(this.maoDoChefe(), peito, k);
-        this.cracha.lookAt(this.camera.position);
-        if (k >= 1) this.colocarNoPeito();
+      if (t >= 6.55 && !this.noPeito) {
+        this.colocarNoPeito();
+        Sons.livro(); // "plim" ao prender o crachá
+        if (Sons.arquivos.applause) Sons.arquivos.applause.volume = 1;
+        Sons.tocarArquivo('applause', 1);
+      }
+
+      // aperto de mão, com o "chacoalhar" das mãos
+      if (this.real && this.chefeReal) {
+        const encontro = this.real.posicaoDoOsso('RightArm').add(this.chefeReal.posicaoDoOsso('RightArm')).multiplyScalar(0.5);
+        encontro.y -= 0.12 - Math.sin((t - 7.6) * 16) * 0.035 * (t > 7.7 && t < 8.4 ? 1 : 0);
+        const aperto = suave(progresso(t, 7.3, 7.7)) * (1 - suave(progresso(t, 8.4, 8.8)));
+        this.chefeReal.mirarBraco(encontro, aperto);
+        this.real.mirarBraco(encontro, aperto);
+      } else if (!this.real) {
+        jp.bracoD.rotation.x = t > 7.3 && t < 8.7 ? 1.2 + Math.sin(t * 16) * 0.08 : 0;
       }
     }
 
-    // 4) Vira para a câmera e comemora (a partir de 8,6 s)
-    if (t >= 8.6) {
+    // 4) Vira para a câmera e comemora (a partir de 9 s)
+    if (t >= 9.0) {
       if (!this.comemorou) {
         this.comemorou = true;
         if (Sons.arquivos.applause) Sons.arquivos.applause.volume = 0.3;
         Sons.tocarArquivo('final2', 1);
       }
-      j.rotation.y = -Math.PI / 4 - ((Math.PI * 3) / 4) * suave(progresso(t, 8.6, 9.2));
+      j.rotation.y = -Math.PI / 4 - ((Math.PI * 3) / 4) * suave(progresso(t, 9.0, 9.6));
       if (this.real) this.real.tocar('comemorar', 0.3);
       else {
-        const braco = Math.PI * suave(progresso(t, 9.0, 9.5));
+        const braco = Math.PI * suave(progresso(t, 9.4, 9.9));
         jp.bracoD.rotation.x = jp.bracoE.rotation.x = braco;
-        j.position.y = t > 9.5 ? Math.max(0, Math.sin((t - 9.5) * 6)) * 0.25 : 0;
+        j.position.y = t > 9.9 ? Math.max(0, Math.sin((t - 9.9) * 6)) * 0.25 : 0;
       }
       if (this.chefeReal) this.chefeReal.tocar('comemorar', 0.4);
       for (const p of this.confete) p.visible = true;
@@ -382,22 +414,23 @@ class Promocao {
       if (p.position.y < 0) p.position.y = 4.3;
     }
 
-    // Câmera: atrás do jogador entrando; depois por cima do ombro, olhando o chefe;
+    // Câmera: atrás do jogador entrando; depois de frente para ele, por trás do ombro do
+    // chefe (dá para ver o crachá sendo preso no peito e o aperto de mão);
     // no fim, de frente para o jogador (com a faixa, a mesa e os colegas no quadro)
     const seguir = new THREE.Vector3(0, 2.4, j.position.z + 4.5);
     const olharSeguir = new THREE.Vector3(0, 1.4, j.position.z - 4);
-    const ombro = new THREE.Vector3(-0.5, 2.1, -1.2);
-    const olharOmbro = new THREE.Vector3(0.7, 1.45, -4.5);
+    const ombro = new THREE.Vector3(1.3, 1.7, -5.25);
+    const olharOmbro = new THREE.Vector3(0.15, 1.3, -4.0);
     const final = new THREE.Vector3(0.3, 2.0, 1.4);
     const olharFinal = new THREE.Vector3(0.2, 1.7, -5);
-    const k1 = suave(progresso(t, 4.0, 5.4));
-    const k2 = suave(progresso(t, 8.6, 10.2));
+    const k1 = suave(progresso(t, 4.0, 5.6));
+    const k2 = suave(progresso(t, 9.0, 10.6));
     const pos = new THREE.Vector3().lerpVectors(seguir, ombro, k1).lerp(final, k2);
     const olhar = new THREE.Vector3().lerpVectors(olharSeguir, olharOmbro, k1).lerp(olharFinal, k2);
     this.camera.position.copy(pos);
     this.camera.lookAt(olhar);
 
-    if (t > 11.2 && !this.terminou) {
+    if (t > 11.8 && !this.terminou) {
       this.terminou = true;
       this.aoTerminar();
     }
@@ -406,6 +439,7 @@ class Promocao {
   // Prende o crachá no peito do jogador, virado para a frente
   colocarNoPeito() {
     this.noPeito = true;
+    this.cordao.visible = true;
     if (this.real) {
       this.real.prenderNoOsso('Spine2', this.cracha, new THREE.Vector3(0, 0.08, 0.15));
     } else {

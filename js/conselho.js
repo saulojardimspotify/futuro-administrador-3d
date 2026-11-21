@@ -49,6 +49,7 @@ class Conselho {
     cena.add(luz, luz.target);
 
     this.montarSala();
+    this.decorar();
 
     // mesa comprida de madeira escura
     const tampo = caixa(1.8, 0.08, 6.2, 0x4a2f1d);
@@ -151,16 +152,172 @@ class Conselho {
     const placa = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.6), new THREE.MeshBasicMaterial({
       map: criarTexturaTexto('CONSELHO DE ADMINISTRAÇÃO', { largura: 768, altura: 170, fundo: '#111827', cor: '#facc15', borda: '#facc15' }),
     }));
-    placa.position.set(-4.38, 2.9, -1);
+    placa.position.set(-4.32, 2.9, -1);
     placa.rotation.y = Math.PI / 2;
     c.add(placa);
     // quadros de "resultados" na parede direita
     for (const z of [-3, 1]) {
       const quadro = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.9), new THREE.MeshBasicMaterial({ map: texturaTelaGrafico() }));
-      quadro.position.set(4.38, 2.4, z);
+      quadro.position.set(4.32, 2.4, z);
       quadro.rotation.y = -Math.PI / 2;
       c.add(quadro);
     }
+  }
+
+  // Decoração: painéis de madeira, estante com livros e troféus, aparador com globo,
+  // quadros, arandelas, pendentes sobre a mesa, tapete, notebooks, plantas e relógio.
+  decorar() {
+    const c = this.cena;
+    const moveis = Cenario.moveis || {};
+    const add = (obj, x, y, z, giro = 0) => {
+      obj.position.set(x, y, z);
+      obj.rotation.y = giro;
+      c.add(obj);
+      return obj;
+    };
+    const madeira = 0x6b4226;
+
+    // painéis de madeira nas paredes laterais (ripas verticais + rodapé + faixa dourada)
+    for (const lado of [-1, 1]) {
+      const x = lado * 4.38;
+      add(caixa(0.04, 1.1, 22, 0x4a2c17), x, 0.55, 0);
+      add(caixa(0.05, 0.05, 22, 0xd4a017), x, 1.12, 0);
+      for (let z = -10; z <= 10; z += 0.6) add(caixa(0.03, 2.9, 0.08, 0x5a3a20), x - lado * 0.01, 2.6, z);
+    }
+
+    // tapete grande embaixo da mesa (azul-marinho com borda dourada)
+    const borda = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 8.6), new THREE.MeshLambertMaterial({ color: 0xb8860b }));
+    borda.rotation.x = -Math.PI / 2;
+    add(borda, 0, 0.005, -1);
+    const tapete = new THREE.Mesh(new THREE.PlaneGeometry(4.9, 8.3), new THREE.MeshLambertMaterial({ color: 0x1e2a5a }));
+    tapete.rotation.x = -Math.PI / 2;
+    add(tapete, 0, 0.008, -1);
+
+    // estante com livros e troféus (parede esquerda)
+    const estante = new THREE.Group();
+    const peca = (obj, x, y, z) => {
+      obj.position.set(x, y, z);
+      estante.add(obj);
+    };
+    peca(caixa(0.05, 2.6, 2.4, madeira), -0.2, 1.3, 0); // fundo
+    peca(caixa(0.45, 2.6, 0.06, madeira), 0, 1.3, -1.2); // laterais
+    peca(caixa(0.45, 2.6, 0.06, madeira), 0, 1.3, 1.2);
+    peca(caixa(0.45, 0.06, 2.46, madeira), 0, 2.6, 0); // topo
+    const coresLivros = [0x991b1b, 0x1e3a8a, 0x166534, 0x92400e, 0x4c1d95, 0x0f172a, 0xb45309];
+    for (let prat = 0; prat < 4; prat++) {
+      const y = 0.25 + prat * 0.62;
+      peca(caixa(0.45, 0.04, 2.34, 0x3b2412), 0, y, 0);
+      let z = -1.05;
+      while (z < 1.0) {
+        if (prat === 2 && z > -0.3 && z < 0.4) { z += 0.7; continue; } // espaço do troféu
+        const larg = 0.05 + Math.random() * 0.05;
+        const alt = 0.32 + Math.random() * 0.18;
+        const livro = caixa(0.3, alt, larg, coresLivros[Math.floor(Math.random() * coresLivros.length)]);
+        livro.position.set(0.05, y + 0.02 + alt / 2, z);
+        estante.add(livro);
+        z += larg + 0.01;
+      }
+    }
+    // troféu dourado na prateleira do meio
+    const ouro = new THREE.MeshStandardMaterial({ color: 0xd4a017, metalness: 0.9, roughness: 0.25 });
+    const taca = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.06, 0.24, 20), ouro);
+    taca.position.set(0.05, 1.79 + 0.3, 0.05);
+    const haste = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.14, 10), ouro);
+    haste.position.set(0.05, 1.79 + 0.12, 0.05);
+    const pe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.06, 16), ouro);
+    pe.position.set(0.05, 1.79 + 0.03, 0.05);
+    estante.add(taca, haste, pe);
+    add(estante, -4.1, 0, -4.4);
+
+    // aparador embaixo do janelão com globo e vasos
+    add(caixa(5, 0.75, 0.55, madeira), 0, 0.38, -6.55);
+    const globo = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 16), new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.4 }));
+    add(globo, -1.6, 1.1, -6.55);
+    const anel = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.012, 8, 32), ouro);
+    anel.rotation.x = 0.4;
+    add(anel, -1.6, 1.1, -6.55);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.08, 0.22, 12), ouro), -1.6, 0.86, -6.55);
+    for (const x of [0.4, 1.9]) {
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.09, 0.32, 16), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 })), x, 0.91, -6.55);
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), new THREE.MeshStandardMaterial({ color: 0x15803d })), x, 1.18, -6.55);
+    }
+
+    // plantas grandes nos cantos (3D realista se o móvel já baixou)
+    for (const [x, z] of [[-3.8, -6.3], [3.8, -6.3], [-3.8, 6.5], [3.8, 6.5]]) {
+      if (moveis.planta2) add(moveis.planta2.clone(), x, 0, z);
+      else {
+        add(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.24, 0.6, 14), new THREE.MeshStandardMaterial({ color: 0x1e293b })), x, 0.3, z);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 10), new THREE.MeshStandardMaterial({ color: 0x166534 })), x, 1.15, z);
+      }
+    }
+
+    // quadros na parede esquerda e direita (pinturas abstratas com moldura dourada)
+    const pintura = (cores) => {
+      const cv = document.createElement('canvas');
+      cv.width = 256;
+      cv.height = 180;
+      const g = cv.getContext('2d');
+      g.fillStyle = cores[0];
+      g.fillRect(0, 0, 256, 180);
+      for (let i = 0; i < 9; i++) {
+        g.fillStyle = cores[1 + (i % (cores.length - 1))];
+        g.globalAlpha = 0.75;
+        g.beginPath();
+        g.arc(Math.random() * 256, Math.random() * 180, 20 + Math.random() * 50, 0, 7);
+        g.fill();
+      }
+      return new THREE.CanvasTexture(cv);
+    };
+    const quadro = (x, z, giro, cores) => {
+      const g = new THREE.Group();
+      g.add(caixa(0.05, 1.0, 1.35, 0xb8860b));
+      const tela = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.85), new THREE.MeshBasicMaterial({ map: pintura(cores) }));
+      tela.rotation.y = giro > 0 ? Math.PI / 2 : -Math.PI / 2;
+      tela.position.x = giro > 0 ? 0.03 : -0.03;
+      g.add(tela);
+      add(g, x, 2.5, z);
+    };
+    quadro(-4.33, 2.6, 1, ['#0f172a', '#facc15', '#3b82f6', '#ef4444']);
+    quadro(-4.33, 5.6, 1, ['#fef3c7', '#1e3a8a', '#b45309', '#15803d']);
+    quadro(4.33, 4.6, -1, ['#1e293b', '#f472b6', '#22d3ee', '#facc15']);
+
+    // arandelas (luz de parede) e relógio
+    for (const [x, z] of [[-4.3, 0.8], [-4.3, 4.1], [4.3, -1], [4.3, 3]]) {
+      const lado = x < 0 ? 1 : -1;
+      add(caixa(0.06, 0.25, 0.14, 0xd4a017), x, 2.9, z);
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffe7a3 })), x + lado * 0.1, 3.05, z);
+      const luz = new THREE.PointLight(0xffd59a, 0.35, 4);
+      luz.position.set(x + lado * 0.3, 3, z);
+      c.add(luz);
+    }
+    if (moveis.relogio) add(moveis.relogio.clone(), 4.38, 3.2, 6.2, -Math.PI / 2);
+
+    // pendentes sobre a mesa (luz quente)
+    for (const z of [-3, -1, 1]) {
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1.0, 6), new THREE.MeshBasicMaterial({ color: 0x111111 })), 0, 3.7, z);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.32, 0.28, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0x111827, side: THREE.DoubleSide, metalness: 0.6, roughness: 0.3 })), 0, 3.1, z);
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), new THREE.MeshBasicMaterial({ color: 0xfff1c1 })), 0, 3.0, z);
+    }
+
+    // notebooks e garrafas d'água na mesa
+    for (const [x, z, giro] of [[-0.55, -2, Math.PI / 2], [0.55, -2, -Math.PI / 2], [-0.55, 0, Math.PI / 2], [0.55, 0, -Math.PI / 2], [0, -3.75, 0]]) {
+      const note = new THREE.Group();
+      note.add(caixa(0.34, 0.02, 0.24, 0x9ca3af));
+      const tela = caixa(0.34, 0.22, 0.015, 0x1f2937);
+      tela.position.set(0, 0.11, -0.12);
+      tela.rotation.x = -0.25;
+      note.add(tela);
+      add(note, x * 0.75, 0.83, z + 0.25, giro);
+    }
+    for (const z of [-3, -1, 1]) {
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.24, 12), new THREE.MeshStandardMaterial({ color: 0xbfdbfe, transparent: true, opacity: 0.6, roughness: 0.1 })), 0, 0.94, z);
+    }
+
+    // logotipo da empresa na parede direita, perto da porta
+    const logo = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.7), new THREE.MeshBasicMaterial({
+      map: criarTexturaTexto('★ EMPRESA S.A. ★', { largura: 768, altura: 240, fundo: '#0b1533', cor: '#facc15', borda: '#d4a017' }),
+    }));
+    add(logo, 4.32, 2.9, 7.6, -Math.PI / 2);
   }
 
   // Cadeira com alguém sentado (realista, se já baixou; senão, boneco de blocos)
