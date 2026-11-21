@@ -431,16 +431,15 @@ function atualizarJogo(dt) {
     }
   }
 
-  // Fase 2: bateu todas as metas? Promoção!
-  if (fase === 2 && itens.coletadas.length >= FASES[2].meta) return promover();
   // Fase 3: juntou todas as soluções? Reunião com o conselho!
   if (fase === 3 && itens.coletadas.length >= FASES[3].meta) return irParaConselho();
 
-  // Fase 1: pegou todas as disciplinas? Aparece a porta do auditório
-  if (fase === 1 && !jogo.final && itens.coletadas.length >= META_DISCIPLINAS) {
+  // Fase 1: pegou todas as disciplinas? Aparece a porta do auditório.
+  // Fase 2: bateu todas as metas? Aparece a porta da sala da diretoria.
+  if (fase <= 2 && !jogo.final && itens.coletadas.length >= FASES[fase].meta) {
     jogo.final = true;
-    jogo.zPorta = itens.criarPorta(jogo.z);
-    HUD.aviso('Todas as disciplinas concluídas! Siga para o Auditório 🎓', 'final');
+    jogo.zPorta = itens.criarPorta(jogo.z, fase === 1 ? '🎓 AUDITÓRIO' : '🏢 DIRETORIA');
+    HUD.aviso(fase === 1 ? 'Todas as disciplinas concluídas! Siga para o Auditório 🎓' : 'Metas batidas! O chefe te chamou na Diretoria 🏢', 'final');
     Sons.todasDisciplinas();
   }
   if (jogo.final) {
@@ -451,7 +450,7 @@ function atualizarJogo(dt) {
       jogo.faixa = 0;
       itens.abrirPorta(1 - Math.max(0, (distancia - 3) / 15));
     }
-    if (distancia < 1) irParaAuditorio();
+    if (distancia < 1) fase === 2 ? irParaPromocao() : irParaAuditorio();
   }
 
   HUD.pontos(jogo.pontos);
@@ -490,14 +489,27 @@ function fimDeJogo(motivo) {
   }, 1200);
 }
 
-// Fim da fase 2: sem cena, direto para a tela de promoção (o boneco comemora pulando)
-function promover() {
-  tela = 'promovido';
-  jogador.visible = true;
+// Fim da fase 2: entra na sala da diretoria e recebe o crachá de efetivado (promocao.js)
+function irParaPromocao() {
+  tela = 'transicao';
   Sons.pararMusica();
-  Sons.todasDisciplinas();
-  Sons.tocarArquivo('applause', 0.9);
-  HUD.esconder();
+  $('fade').classList.add('ativo');
+  const def = PERSONAGENS[escolhido];
+  setTimeout(() => {
+    HUD.esconder();
+    const montar = (real) => {
+      auditorio = new Promocao(def, nomeJogador, mostrarPromocao, real);
+      tela = 'auditorio';
+      $('fade').classList.remove('ativo');
+    };
+    if (jogador.userData.real) {
+      Promise.all([Modelos.criar(def), Modelos.preparar(['chefe', ...FIGURANTES])]).then(([real]) => montar(real), () => montar(null));
+    } else montar(null);
+  }, 900);
+}
+
+// Tela de promoção (por cima da cena, que continua com todos comemorando)
+function mostrarPromocao() {
   const def = PERSONAGENS[escolhido];
   $('promocao-titulo').textContent = def.mulher ? 'Promovida!' : 'Promovido!';
   $('promocao-texto').innerHTML =
@@ -860,16 +872,6 @@ function laco() {
   } else if (tela === 'caindo') {
     jogador.rotation.x = Math.max(jogador.rotation.x - dt * 4, -Math.PI / 2);
     jogador.position.y = Math.max(jogador.position.y - dt * 3, 0.25);
-  } else if (tela === 'promovido') {
-    // comemorando: animação de vitória (realista) ou pulinhos com os braços para cima (blocos)
-    if (jogador.userData.real) {
-      jogador.position.y = 0;
-      jogador.userData.real.tocar('comemorar', 0.3);
-      jogador.userData.real.atualizar(dt);
-    } else {
-      jogador.position.y = Math.abs(Math.sin(tempoTotal * 6)) * 0.4;
-      jogador.userData.bracoE.rotation.x = jogador.userData.bracoD.rotation.x = Math.PI;
-    }
   } else if (tela === 'transicao') {
     jogo.z -= 6 * dt;
     jogador.position.z = jogo.z;

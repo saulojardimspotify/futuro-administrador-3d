@@ -553,7 +553,7 @@ class Itens {
   }
 
   // Todas as disciplinas pegas: coloca a porta do auditório lá na frente.
-  criarPorta(zJogador) {
+  criarPorta(zJogador, texto = '🎓 AUDITÓRIO') {
     this.modoFinal = true;
     const zPorta = zJogador - 90;
     // tira os livros que sobraram e os obstáculos perto da porta
@@ -594,7 +594,7 @@ class Itens {
 
     const placa = new THREE.Mesh(
       new THREE.PlaneGeometry(3.2, 0.75),
-      new THREE.MeshBasicMaterial({ map: criarTexturaTexto('🎓 AUDITÓRIO', { largura: 640, altura: 150, fundo: '#1e3a8a', cor: '#facc15' }) })
+      new THREE.MeshBasicMaterial({ map: criarTexturaTexto(texto, { largura: 640, altura: 150, fundo: '#1e3a8a', cor: '#facc15' }) })
     );
     placa.position.set(0, 3.6, 0.17);
     g.add(placa);
